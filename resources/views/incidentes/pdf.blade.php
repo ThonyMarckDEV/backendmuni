@@ -23,6 +23,10 @@
             text-align: center;
             border-radius: 8px 8px 0 0;
         }
+        .header img {
+            max-width: 150px; /* Ajusta el tamaño del logo según necesites */
+            margin-bottom: 10px;
+        }
         .header h1 {
             margin: 0;
             font-size: 24px;
@@ -72,6 +76,7 @@
 <body>
     <div class="container">
         <div class="header">
+            <img src="{{ public_path('img/logo.png') }}" alt="Logo">
             <h1>Detalles del Incidente</h1>
         </div>
         <div class="section">
