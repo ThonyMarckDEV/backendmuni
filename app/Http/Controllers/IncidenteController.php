@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateIncidenteRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class IncidenteController extends Controller
 {
@@ -117,6 +118,26 @@ class IncidenteController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener los activos',
+            ], 500);
+        }
+    }
+
+    public function generatePdf($id)
+    {
+        try {
+            $incidente = Incidente::with('activo')->findOrFail($id);
+            $pdf = Pdf::loadView('incidentes.pdf', ['incidente' => $incidente]);
+            return $pdf->download('incidente_' . $id . '.pdf');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Incidente no encontrado',
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error al generar PDF del incidente: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar el PDF',
             ], 500);
         }
     }
