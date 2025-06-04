@@ -9,7 +9,7 @@ use App\Http\Requests\UpdateIncidenteRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class IncidenteController extends Controller
 {
