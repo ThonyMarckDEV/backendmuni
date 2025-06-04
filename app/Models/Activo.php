@@ -20,4 +20,9 @@ class Activo extends Model
     protected $casts = [
         'estado' => 'boolean',
     ];
+
+    public function incidentes()
+    {
+        return $this->hasMany(Incidente::class);
+    }
 }
