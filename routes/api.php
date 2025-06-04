@@ -6,6 +6,7 @@ use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\DetalleCarritoController;
 use App\Http\Controllers\DirectionController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\RolController;
 use App\Http\Controllers\SessionsController;
 use App\Http\Controllers\SubCategoriesController;
 use App\Http\Controllers\UserController;
@@ -46,6 +47,21 @@ Route::middleware(['auth.jwt', 'checkRoleMW:usuario'])->group(function () {
 
 // RUTAS PARA ADMIN VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
 Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () { 
+
+   // User routes
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::get('/users/{id}', [UserController::class, 'show'])->name('users.show');
+    Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::patch('/users/{id}/estado', [UserController::class, 'cambiarEstado'])->name('users.cambiarEstado');
+
+    // Role routes
+    Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
+    Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
+    Route::get('/roles/{id}', [RolController::class, 'show'])->name('roles.show');
+    Route::put('/roles/{id}', [RolController::class, 'update'])->name('roles.update');
+    Route::delete('/roles/{id}', [RolController::class, 'destroy'])->name('roles.destroy');
 
 });
 

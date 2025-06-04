@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDatosRequest;
+use App\Http\Requests\UpdateDatosRequest;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\UpdateUserRequest;
 use App\Models\Datos;
 use App\Models\Rol;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +93,8 @@ class UserController extends Controller
 
                 // Crear datos personales
                 $datos = Datos::create($request->only([
-                    'nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono'
+                    'nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono',
+                    'telefonoTecnico', 'especializacion', 'area'
                 ]));
 
                 // Preparar datos del usuario
@@ -170,10 +172,25 @@ class UserController extends Controller
             try {
                 $usuario = User::with(['datos'])->findOrFail($id);
 
-                // Actualizar datos personales si están presentes
-                if ($request->hasAny(['nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono'])) {
+                // Validar datos personales si están presentes
+                if ($request->hasAny(['nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono', 'telefonoTecnico', 'especializacion', 'area'])) {
+                    $datosValidator = Validator::make(
+                        $request->only(['nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono', 'telefonoTecnico', 'especializacion', 'area']),
+                        (new UpdateDatosRequest())->rules()
+                    );
+
+                    if ($datosValidator->fails()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Error de validación en datos personales',
+                            'errors' => $datosValidator->errors()
+                        ], 422);
+                    }
+
+                    // Actualizar datos personales
                     $datosPersonales = $request->only([
-                        'nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono'
+                        'nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono',
+                        'telefonoTecnico', 'especializacion', 'area'
                     ]);
                     
                     // Filtrar solo los campos que no están vacíos
@@ -243,7 +260,7 @@ class UserController extends Controller
             try {
                 $usuario = User::findOrFail($id);
                 
-                // Opcional: También eliminar los datos personales
+                // Eliminar los datos personales
                 if ($usuario->datos) {
                     $usuario->datos->delete();
                 }
@@ -305,32 +322,4 @@ class UserController extends Controller
             ], 500);
         }
     }
-
-    /**
-     * Obtiene todos los roles disponibles para el formulario.
-     *
-     * @return JsonResponse
-     */
-    public function getRoles(): JsonResponse
-    {
-        try {
-            $roles = Rol::where('estado', 1)->get(['idRol as id', 'nombre']);
-
-            return response()->json([
-                'success' => true,
-                'data' => $roles,
-                'message' => 'Roles obtenidos exitosamente'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error al obtener roles: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener los roles',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Busca usuarios por término de búsqueda.
+}
