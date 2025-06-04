@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivoController;
 use App\Http\Controllers\AuthGoogleController;
 use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\CategoriesController;
@@ -62,6 +63,12 @@ Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () {
     Route::get('/roles/{id}', [RolController::class, 'show'])->name('roles.show');
     Route::put('/roles/{id}', [RolController::class, 'update'])->name('roles.update');
     Route::delete('/roles/{id}', [RolController::class, 'destroy'])->name('roles.destroy');
+
+    // Activo routes
+    Route::get('/activos', [ActivoController::class, 'index']);
+    Route::post('/activos', [ActivoController::class, 'store']);
+    Route::put('/activos/{id}', [ActivoController::class, 'update']);
+    Route::get('/activos/{id}', [ActivoController::class, 'show']);
 
 });
 
