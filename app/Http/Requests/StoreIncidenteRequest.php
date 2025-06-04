@@ -18,6 +18,7 @@ class StoreIncidenteRequest extends FormRequest
             'titulo' => 'nullable|string|max:255',
             'descripcion' => 'required|string|max:1000',
             'fecha_reporte' => 'required|date',
+            'prioridad' => 'required|integer|in:0,1,2', // Validate prioridad
         ];
     }
 
@@ -30,6 +31,9 @@ class StoreIncidenteRequest extends FormRequest
             'descripcion.required' => 'La descripción es requerida.',
             'fecha_reporte.required' => 'La fecha de reporte es requerida.',
             'fecha_reporte.date' => 'La fecha de reporte debe ser una fecha válida.',
+            'prioridad.required' => 'La prioridad es requerida.',
+            'prioridad.integer' => 'La prioridad debe ser un número entero.',
+            'prioridad.in' => 'La prioridad debe ser 0 (Baja), 1 (Media) o 2 (Alta).',
         ];
     }
 }
