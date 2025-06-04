@@ -34,7 +34,9 @@ class IncidenteController extends Controller
     {
         return DB::transaction(function () use ($request) {
             try {
-                $incidente = Incidente::create($request->validated());
+                $validated = $request->validated();
+                $validated['estado'] = 0; // Force estado to 0 (Pendiente) for new incidents
+                $incidente = Incidente::create($validated);
                 $incidente->load('activo');
                 return response()->json([
                     'success' => true,
@@ -56,7 +58,7 @@ class IncidenteController extends Controller
         return DB::transaction(function () use ($request, $id) {
             try {
                 $incidente = Incidente::findOrFail($id);
-                $incidente->update($request->validated());
+                $incidente->update($request->validated()); // estado is not in validated data, so it's preserved
                 $incidente->load('activo');
                 return response()->json([
                     'success' => true,
