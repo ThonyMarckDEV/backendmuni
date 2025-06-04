@@ -18,18 +18,11 @@ use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
 {
-    /**
-     * Muestra una lista de todos los usuarios con sus relaciones de rol y datos personales.
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function index(Request $request): JsonResponse
     {
         try {
             $query = User::with(['rol', 'datos']);
 
-            // Filtros opcionales
             if ($request->has('estado')) {
                 $query->where('estado', $request->estado);
             }
@@ -47,7 +40,6 @@ class UserController extends Controller
                 });
             }
 
-            // Paginación
             $perPage = $request->get('per_page', 15);
             $usuarios = $query->paginate($perPage);
 
@@ -56,7 +48,6 @@ class UserController extends Controller
                 'data' => $usuarios,
                 'message' => 'Usuarios obtenidos exitosamente'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error al obtener usuarios: ' . $e->getMessage());
             return response()->json([
@@ -67,17 +58,10 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Almacena un nuevo usuario junto con sus datos personales en la base de datos.
-     *
-     * @param StoreUserRequest $request
-     * @return JsonResponse
-     */
     public function store(StoreUserRequest $request): JsonResponse
     {
         return DB::transaction(function () use ($request) {
             try {
-                // Validar datos personales
                 $datosValidator = Validator::make(
                     $request->all(),
                     (new StoreDatosRequest())->rules()
@@ -91,23 +75,18 @@ class UserController extends Controller
                     ], 422);
                 }
 
-                // Crear datos personales
                 $datos = Datos::create($request->only([
-                    'nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono',
-                    'telefonoTecnico', 'especializacion', 'area'
+                    'nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'
                 ]));
 
-                // Preparar datos del usuario
                 $dataUsuario = $request->only([
-                    'username', 'password', 'idRol', 'estado'
+                    'password', 'idRol'
                 ]);
                 $dataUsuario['idDatos'] = $datos->idDatos;
                 $dataUsuario['password'] = bcrypt($dataUsuario['password']);
 
-                // Crear usuario
                 $usuario = User::create($dataUsuario);
 
-                // Cargar relaciones para la respuesta
                 $usuario->load(['rol', 'datos']);
 
                 return response()->json([
@@ -115,7 +94,6 @@ class UserController extends Controller
                     'data' => $usuario,
                     'message' => 'Usuario creado exitosamente',
                 ], 201);
-
             } catch (\Exception $e) {
                 Log::error('Error al crear usuario: ' . $e->getMessage());
                 return response()->json([
@@ -127,12 +105,6 @@ class UserController extends Controller
         });
     }
 
-    /**
-     * Muestra un usuario específico junto con sus relaciones de rol y datos personales.
-     *
-     * @param int $id
-     * @return JsonResponse
-     */
     public function show(int $id): JsonResponse
     {
         try {
@@ -143,7 +115,6 @@ class UserController extends Controller
                 'data' => $usuario,
                 'message' => 'Usuario obtenido exitosamente'
             ]);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
@@ -159,23 +130,15 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Actualiza la información de un usuario específico.
-     *
-     * @param UpdateUserRequest $request
-     * @param int $id
-     * @return JsonResponse
-     */
     public function update(UpdateUserRequest $request, int $id): JsonResponse
     {
         return DB::transaction(function () use ($request, $id) {
             try {
                 $usuario = User::with(['datos'])->findOrFail($id);
 
-                // Validar datos personales si están presentes
-                if ($request->hasAny(['nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono', 'telefonoTecnico', 'especializacion', 'area'])) {
+                if ($request->hasAny(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'])) {
                     $datosValidator = Validator::make(
-                        $request->only(['nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono', 'telefonoTecnico', 'especializacion', 'area']),
+                        $request->only(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area']),
                         (new UpdateDatosRequest())->rules()
                     );
 
@@ -187,13 +150,10 @@ class UserController extends Controller
                         ], 422);
                     }
 
-                    // Actualizar datos personales
                     $datosPersonales = $request->only([
-                        'nombre', 'apellido', 'email', 'direccion', 'dni', 'ruc', 'telefono',
-                        'telefonoTecnico', 'especializacion', 'area'
+                        'nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'
                     ]);
                     
-                    // Filtrar solo los campos que no están vacíos
                     $datosPersonales = array_filter($datosPersonales, function($value) {
                         return $value !== null && $value !== '';
                     });
@@ -203,17 +163,14 @@ class UserController extends Controller
                     }
                 }
 
-                // Actualizar datos del usuario
-                $dataUsuario = $request->only(['username', 'password', 'idRol', 'estado']);
+                $dataUsuario = $request->only(['password', 'idRol', 'estado']);
                 
-                // Encriptar contraseña si está presente
                 if (!empty($dataUsuario['password'])) {
                     $dataUsuario['password'] = bcrypt($dataUsuario['password']);
                 } else {
                     unset($dataUsuario['password']);
                 }
 
-                // Filtrar campos vacíos
                 $dataUsuario = array_filter($dataUsuario, function($value) {
                     return $value !== null && $value !== '';
                 });
@@ -222,7 +179,6 @@ class UserController extends Controller
                     $usuario->update($dataUsuario);
                 }
 
-                // Recargar relaciones
                 $usuario->refresh();
                 $usuario->load(['rol', 'datos']);
 
@@ -231,7 +187,6 @@ class UserController extends Controller
                     'data' => $usuario,
                     'message' => 'Usuario actualizado exitosamente'
                 ]);
-
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
                 return response()->json([
                     'success' => false,
@@ -248,19 +203,12 @@ class UserController extends Controller
         });
     }
 
-    /**
-     * Elimina un usuario de la base de datos.
-     *
-     * @param int $id
-     * @return JsonResponse
-     */
     public function destroy(int $id): JsonResponse
     {
         return DB::transaction(function () use ($id) {
             try {
                 $usuario = User::findOrFail($id);
                 
-                // Eliminar los datos personales
                 if ($usuario->datos) {
                     $usuario->datos->delete();
                 }
@@ -271,7 +219,6 @@ class UserController extends Controller
                     'success' => true,
                     'message' => 'Usuario eliminado exitosamente'
                 ]);
-
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
                 return response()->json([
                     'success' => false,
@@ -288,13 +235,6 @@ class UserController extends Controller
         });
     }
 
-    /**
-     * Cambia el estado de un usuario específico.
-     *
-     * @param int $id
-     * @param UserService $userService
-     * @return JsonResponse
-     */
     public function cambiarEstado(int $id, UserService $userService): JsonResponse
     {
         try {
@@ -307,7 +247,6 @@ class UserController extends Controller
                 'message' => 'Estado actualizado exitosamente',
                 'estado' => $usuarioActualizado->estado
             ]);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,

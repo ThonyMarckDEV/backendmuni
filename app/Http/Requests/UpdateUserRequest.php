@@ -6,27 +6,28 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            'username' => 'sometimes|required|string|max:50|unique:usuarios,username,' . $this->user->idUsuario . ',idUsuario',
-            'password' => 'nullable|string|min:6',
-            'idDatos' => 'sometimes|exists:datos,idDatos',
-            'idRol' => 'sometimes|exists:roles,idRol',
-            'estado' => 'sometimes|boolean',
+            'password' => 'sometimes|required|string|min:6',
+            'idRol' => 'sometimes|required|exists:roles,idRol',
+            'estado' => 'sometimes|required|boolean',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
+            'idRol.required' => 'Debe seleccionar un rol.',
+            'idRol.exists' => 'El rol seleccionado no es válido.',
+            'estado.required' => 'El estado es obligatorio.',
+            'estado.boolean' => 'El estado debe ser verdadero o falso.',
         ];
     }
 }
