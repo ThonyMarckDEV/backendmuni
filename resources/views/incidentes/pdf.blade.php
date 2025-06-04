@@ -24,7 +24,7 @@
             border-radius: 8px 8px 0 0;
         }
         .header img {
-            max-width: 150px; /* Ajusta el tamaño del logo según necesites */
+            max-width: 150px;
             margin-bottom: 10px;
         }
         .header h1 {
@@ -96,13 +96,13 @@
                 </span>
             </div>
         </div>
-        <div class="section">
+        <div className="section">
             <h2>Información Adicional</h2>
-            <div class="detail">
+            <div className="detail">
                 <label>Fecha de Reporte:</label>
-                <span>{{ $incidente->fecha_reporte ?? '-' }}</span>
+                <span>{{ $incidente->fecha_reporte ? \Carbon\Carbon::parse($incidente->fecha_reporte)->format('d/m/Y H:i') : '-' }}</span>
             </div>
-            <div class="detail">
+            <div className="detail">
                 <label>Estado:</label>
                 <span class="badge badge-{{ $incidente->estado == 2 ? 'resuelto' : ($incidente->estado == 1 ? 'en-progreso' : 'pendiente') }}">
                     {{ $incidente->estado == 2 ? 'Resuelto' : ($incidente->estado == 1 ? 'En progreso' : 'Pendiente') }}
