@@ -33,8 +33,9 @@ class Datos extends Model
         'apellido',
         'email',
         'dni',
-        'ruc',
         'telefono',
+        'especializacion',
+        'area'
     ];
 
     /**

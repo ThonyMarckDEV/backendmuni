@@ -14,8 +14,9 @@ return new class extends Migration
             $table->string('apellido');
             $table->string('email')->unique();
             $table->string('dni')->nullable();
-            $table->string('ruc')->nullable();
             $table->string('telefono')->nullable();
+            $table->string('especializacion')->nullable();
+            $table->string('area')->nullable();
             $table->timestamps();
         });
     }
