@@ -11,13 +11,16 @@ class Incidente extends Model
 
     protected $fillable = [
         'activo_id',
+        'prioridad',
+        'titulo',
         'descripcion',
         'fecha_reporte',
         'estado',
     ];
 
     protected $casts = [
-        'estado' => 'integer', // Ensure estado is treated as an integer
+        'prioridad' => 'integer',
+        'estado' => 'integer',
         'fecha_reporte' => 'date',
     ];
 

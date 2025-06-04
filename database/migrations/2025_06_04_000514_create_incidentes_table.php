@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('incidentes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('activo_id')->constrained()->onDelete('cascade');
+            $table->boolean(column: 'prioridad')->comment('0: Baja , 1:Media ,2:Alta');
+            $table->text('titulo');
             $table->text('descripcion');
             $table->date('fecha_reporte');
             $table->boolean('estado')->default(0)->comment('0: Pendiente , 1:En progreso ,2:Resuelto');

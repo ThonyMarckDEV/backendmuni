@@ -58,7 +58,7 @@ class IncidenteController extends Controller
         return DB::transaction(function () use ($request, $id) {
             try {
                 $incidente = Incidente::findOrFail($id);
-                $incidente->update($request->validated()); // estado is not in validated data, so it's preserved
+                $incidente->update($request->validated()); // estado and prioridad are preserved
                 $incidente->load('activo');
                 return response()->json([
                     'success' => true,
