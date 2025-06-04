@@ -56,9 +56,10 @@ Route::middleware(['auth.jwt', 'checkRoleMW:usuario'])->group(function () {
     // Incidente routes
     Route::get('/incidentes', [IncidenteController::class, 'index']);
     Route::post('/incidentes', [IncidenteController::class, 'store']);
-    Route::put('/incidentes/{id}', [IncidenteController::class, 'update']);
+    Route::get('/incidentes/getactivos', [IncidenteController::class, 'getActivos']);
     Route::get('/incidentes/{id}', [IncidenteController::class, 'show']);
-    Route::get('/incidentes/activos', [IncidenteController::class, 'getActivos']);
+    Route::put('/incidentes/{id}', [IncidenteController::class, 'update']);
+
     
 });
 

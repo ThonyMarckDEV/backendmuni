@@ -51,7 +51,7 @@ class IncidenteController extends Controller
         });
     }
 
-    public function update(UpdateIncidenteRequest $request, int $id): JsonResponse
+    public function update(UpdateIncidenteRequest $request, $id): JsonResponse
     {
         return DB::transaction(function () use ($request, $id) {
             try {
@@ -78,7 +78,7 @@ class IncidenteController extends Controller
         });
     }
 
-    public function show(int $id): JsonResponse
+    public function show($id): JsonResponse
     {
         try {
             $incidente = Incidente::with('activo')->findOrFail($id);
