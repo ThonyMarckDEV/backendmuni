@@ -7,52 +7,35 @@ use Illuminate\Validation\Rule;
 
 class UpdateDatosRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function rules()
     {
-        return true;
-    }
+        // Get the idDatos of the user being updated
+        $idDatos = $this->user()->datos->idDatos ?? null;
 
-    public function rules(): array
-    {
-        $rules = [
-            'nombre' => 'sometimes|required|string|max:255',
-            'apellido' => 'sometimes|required|string|max:255',
+        return [
+            'nombre' => 'required|string|max:255',
+            'apellido' => 'required|string|max:255',
             'email' => [
-                'sometimes',
                 'required',
                 'email',
-                Rule::unique('datos', 'email')->ignore($this->route('id'), 'idDatos'),
-                'max:255',
+                Rule::unique('datos', 'email')->ignore($idDatos, 'idDatos'),
             ],
             'dni' => [
-                'nullable',
+                'required',
                 'string',
-                'max:20',
-                Rule::unique('datos', 'dni')->ignore($this->route('id'), 'idDatos'),
+                Rule::unique('datos', 'dni')->ignore($idDatos, 'idDatos'),
             ],
             'telefono' => 'nullable|string|max:20',
+            'especializacion' => 'nullable|string|max:255',
+            'area' => 'nullable|string|max:255',
         ];
-
-        if ($this->input('idRol') == 2) { // Usuario
-            $rules['area'] = 'sometimes|required|string|max:255';
-        } elseif ($this->input('idRol') == 3) { // Técnico
-            $rules['especializacion'] = 'sometimes|required|string|max:255';
-        }
-
-        return $rules;
     }
 
-    public function messages(): array
+    public function messages()
     {
         return [
-            'nombre.required' => 'El nombre es obligatorio.',
-            'apellido.required' => 'El apellido es obligatorio.',
-            'email.required' => 'El correo electrónico es obligatorio.',
-            'email.email' => 'El correo electrónico debe ser válido.',
-            'email.unique' => 'El correo electrónico ya está registrado.',
+            'email.unique' => 'El correo electrónico ya está en uso.',
             'dni.unique' => 'El DNI ya está registrado.',
-            'especializacion.required' => 'La especialización es obligatoria para técnicos.',
-            'area.required' => 'El área es obligatoria para usuarios.',
         ];
     }
 }

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -139,7 +140,23 @@ class UserController extends Controller
                 if ($request->hasAny(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'])) {
                     $datosValidator = Validator::make(
                         $request->only(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area']),
-                        (new UpdateDatosRequest())->rules()
+                        [
+                            'nombre' => 'required|string|max:255',
+                            'apellido' => 'required|string|max:255',
+                            'email' => [
+                                'required',
+                                'email',
+                                Rule::unique('datos', 'email')->ignore($usuario->idDatos, 'idDatos'),
+                            ],
+                            'dni' => [
+                                'required',
+                                'string',
+                                Rule::unique('datos', 'dni')->ignore($usuario->idDatos, 'idDatos'),
+                            ],
+                            'telefono' => 'nullable|string|max:20',
+                            'especializacion' => 'nullable|string|max:255',
+                            'area' => 'nullable|string|max:255',
+                        ]
                     );
 
                     if ($datosValidator->fails()) {
@@ -153,7 +170,7 @@ class UserController extends Controller
                     $datosPersonales = $request->only([
                         'nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'
                     ]);
-                    
+
                     $datosPersonales = array_filter($datosPersonales, function($value) {
                         return $value !== null && $value !== '';
                     });
