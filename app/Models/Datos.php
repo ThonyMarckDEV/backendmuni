@@ -35,7 +35,7 @@ class Datos extends Model
         'dni',
         'telefono',
         'especializacion',
-        'area'
+        'idArea'
     ];
 
     /**
@@ -44,5 +44,10 @@ class Datos extends Model
     public function usuario()
     {
         return $this->hasOne(User::class, 'idDatos', 'idDatos');
+    }
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class, 'idArea', 'idArea');
     }
 }

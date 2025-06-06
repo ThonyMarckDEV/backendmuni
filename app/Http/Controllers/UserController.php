@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Datos;
 use App\Models\Rol;
+use App\Models\Area;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -77,7 +78,7 @@ class UserController extends Controller
                 }
 
                 $datos = Datos::create($request->only([
-                    'nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'
+                    'nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'idArea'
                 ]));
 
                 $dataUsuario = $request->only([
@@ -137,9 +138,9 @@ class UserController extends Controller
             try {
                 $usuario = User::with(['datos'])->findOrFail($id);
 
-                if ($request->hasAny(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'])) {
+                if ($request->hasAny(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'idArea'])) {
                     $datosValidator = Validator::make(
-                        $request->only(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area']),
+                        $request->only(['nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'idArea']),
                         [
                             'nombre' => 'required|string|max:255',
                             'apellido' => 'required|string|max:255',
@@ -149,13 +150,13 @@ class UserController extends Controller
                                 Rule::unique('datos', 'email')->ignore($usuario->idDatos, 'idDatos'),
                             ],
                             'dni' => [
-                                'required',
+                                'nullable',
                                 'string',
                                 Rule::unique('datos', 'dni')->ignore($usuario->idDatos, 'idDatos'),
                             ],
                             'telefono' => 'nullable|string|max:20',
                             'especializacion' => 'nullable|string|max:255',
-                            'area' => 'nullable|string|max:255',
+                            'idArea' => ['nullable', 'exists:areas,idArea'],
                         ]
                     );
 
@@ -168,7 +169,7 @@ class UserController extends Controller
                     }
 
                     $datosPersonales = $request->only([
-                        'nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'area'
+                        'nombre', 'apellido', 'email', 'dni', 'telefono', 'especializacion', 'idArea'
                     ]);
 
                     $datosPersonales = array_filter($datosPersonales, function($value) {
@@ -204,11 +205,6 @@ class UserController extends Controller
                     'data' => $usuario,
                     'message' => 'Usuario actualizado exitosamente'
                 ]);
-            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Usuario no encontrado'
-                ], 404);
             } catch (\Exception $e) {
                 Log::error('Error al actualizar usuario: ' . $e->getMessage());
                 return response()->json([
@@ -278,4 +274,5 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 }

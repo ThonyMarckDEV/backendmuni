@@ -100,9 +100,4 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsTo(Rol::class, 'idRol', 'idRol');
     }
 
-    public function carrito()
-    {
-        return $this->hasOne(Carrito::class, 'idUsuario', 'idUsuario');
-    }
-
 }

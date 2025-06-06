@@ -22,7 +22,7 @@ class StoreDatosRequest extends FormRequest
         ];
 
         if ($this->input('idRol') == 2) { // Usuario
-            $rules['area'] = 'required|string|max:255';
+            $rules['idArea'] = 'required|integer|exists:areas,idArea';
         } elseif ($this->input('idRol') == 3) { // Técnico
             $rules['especializacion'] = 'required|string|max:255';
         }
@@ -40,7 +40,9 @@ class StoreDatosRequest extends FormRequest
             'email.unique' => 'El correo electrónico ya está registrado.',
             'dni.unique' => 'El DNI ya está registrado.',
             'especializacion.required' => 'La especialización es obligatoria para técnicos.',
-            'area.required' => 'El área es obligatoria para usuarios.',
+            'idArea.required' => 'El área es obligatoria para usuarios.',
+            'idArea.integer' => 'El área debe ser un valor válido.',
+            'idArea.exists' => 'El área seleccionada no existe.',
         ];
     }
 }

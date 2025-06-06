@@ -19,4 +19,9 @@ class Area extends Model
     {
         return $this->belongsToMany(Activo::class, 'activos_areas', 'idArea', 'idActivo');
     }
+
+    public function datos()
+    {
+        return $this->hasMany(Datos::class, 'idArea', 'idArea');
+    }
 }
