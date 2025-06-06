@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('dni')->nullable();
             $table->string('telefono')->nullable();
             $table->string('especializacion')->nullable();
-            $table->string('area')->nullable();
+            $table->unsignedBigInteger('idArea')->nullable();
+            $table->foreign('idArea')->references('idArea')->on('areas')->onDelete('set null');
             $table->timestamps();
         });
     }

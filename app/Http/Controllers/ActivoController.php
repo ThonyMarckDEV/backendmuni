@@ -14,7 +14,7 @@ class ActivoController extends Controller
     public function index(): JsonResponse
     {
         try {
-            $activos = Activo::query()->paginate(15);
+            $activos = Activo::all();
             return response()->json([
                 'success' => true,
                 'data' => $activos,

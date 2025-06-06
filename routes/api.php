@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\ActivoAreaController;
 use App\Http\Controllers\ActivoController;
+use App\Http\Controllers\AreaController;
 use App\Http\Controllers\IncidenteController;
 use App\Http\Controllers\AuthGoogleController;
 use App\Http\Controllers\CarritoController;
@@ -46,6 +48,19 @@ Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () {
     Route::post('/activos', [ActivoController::class, 'store']);
     Route::put('/activos/{id}', [ActivoController::class, 'update']);
     Route::get('/activos/{id}', [ActivoController::class, 'show']);
+
+    //Areas routes
+    Route::get('/areas', [AreaController::class, 'index']);
+    Route::get('/areas/{id}', [AreaController::class, 'show']);
+    Route::post('/areas', [AreaController::class, 'store']);
+    Route::put('/areas/{id}', [AreaController::class, 'update']);
+    Route::delete('/areas/{id}', [AreaController::class, 'destroy']);
+
+    // Aactivos-Areas routes
+    Route::get('/areas/{idArea}/activos', [ActivoAreaController::class, 'index']);
+    Route::post('/activos-areas', [ActivoAreaController::class, 'store']);
+    Route::put('/activos-areas/{id}', [ActivoAreaController::class, 'update']);
+    Route::delete('/activos-areas/{id}', [ActivoAreaController::class, 'destroy']);
 
 
 });
