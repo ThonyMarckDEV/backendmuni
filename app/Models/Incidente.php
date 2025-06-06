@@ -10,7 +10,9 @@ class Incidente extends Model
     use HasFactory;
 
     protected $fillable = [
-        'activo_id',
+        'idActivo',
+        'idUsuario',
+        'idTecnico',
         'prioridad',
         'titulo',
         'descripcion',
