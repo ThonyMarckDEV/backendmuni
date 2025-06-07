@@ -7,27 +7,90 @@ use App\Models\Area;
 use App\Models\Activo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class ActivoAreaController extends Controller
 {
     /**
      * Listar activos asignados a un área específica
      */
-    public function index($idArea)
+    public function index($idArea): JsonResponse
     {
-        $area = Area::find($idArea);
-        if (!$area) {
-            return response()->json(['success' => false, 'message' => 'Área no encontrada'], 404);
-        }
+        try {
+            $area = Area::find($idArea);
+            if (!$area) {
+                return response()->json(['success' => false, 'message' => 'Área no encontrada'], 404);
+            }
 
-        $activos = $area->activos()->with(['areas'])->get();
-        return response()->json(['success' => true, 'data' => $activos], 200);
+            $activos = $area->activos()->with(['areas' => function ($query) {
+                $query->select('areas.idArea', 'areas.nombre');
+            }])->get()->map(function ($activo) {
+                return [
+                    'idActivo' => $activo->idActivo,
+                    'codigo_inventario' => $activo->codigo_inventario,
+                    'tipo' => $activo->tipo,
+                    'marca_modelo' => $activo->marca_modelo,
+                    'estado' => $activo->estado,
+                    'assigned_area' => $activo->areas->isNotEmpty() ? [
+                        'idArea' => $activo->areas->first()->idArea,
+                        'nombre' => $activo->areas->first()->nombre
+                    ] : null,
+                    'created_at' => $activo->created_at,
+                    'updated_at' => $activo->updated_at,
+                ];
+            });
+
+            return response()->json(['success' => true, 'data' => $activos, 'message' => 'Activos obtenidos exitosamente'], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener activos por área: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al obtener los activos'], 500);
+        }
+    }
+
+    /**
+     * Listar todos los activos con su estado de asignación
+     */
+    public function indexActivos(): JsonResponse
+    {
+        try {
+            $activos = Activo::with(['areas' => function ($query) {
+                $query->select('areas.idArea', 'areas.nombre');
+            }])->get()->map(function ($activo) {
+                return [
+                    'idActivo' => $activo->idActivo,
+                    'codigo_inventario' => $activo->codigo_inventario,
+                    'tipo' => $activo->tipo,
+                    'marca_modelo' => $activo->marca_modelo,
+                    'estado' => $activo->estado,
+                    'isAssigned' => $activo->areas->isNotEmpty(),
+                    'assigned_area' => $activo->areas->isNotEmpty() ? [
+                        'idArea' => $activo->areas->first()->idArea,
+                        'nombre' => $activo->areas->first()->nombre
+                    ] : null,
+                    'created_at' => $activo->created_at,
+                    'updated_at' => $activo->updated_at,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $activos,
+                'message' => 'Activos obtenidos exitosamente',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener activos: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los activos',
+            ], 500);
+        }
     }
 
     /**
      * Asignar un activo a un área
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'idActivo' => 'required|exists:activos,idActivo',
@@ -38,7 +101,16 @@ class ActivoAreaController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        // Verificar si la relación ya existe
+        // Verificar si el activo ya está asignado a cualquier área
+        $existingAssignment = ActivoArea::where('idActivo', $request->idActivo)->first();
+        if ($existingAssignment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El activo ya está asignado a un área. Actualice la asignación existente.',
+            ], 409);
+        }
+
+        // Verificar si la relación ya existe para esta área específica
         $existing = ActivoArea::where('idActivo', $request->idActivo)
             ->where('idArea', $request->idArea)
             ->first();
@@ -46,18 +118,27 @@ class ActivoAreaController extends Controller
             return response()->json(['success' => false, 'message' => 'El activo ya está asignado a esta área'], 409);
         }
 
-        $activoArea = ActivoArea::create([
-            'idActivo' => $request->idActivo,
-            'idArea' => $request->idArea,
-        ]);
+        try {
+            $activoArea = ActivoArea::create([
+                'idActivo' => $request->idActivo,
+                'idArea' => $request->idArea,
+            ]);
 
-        return response()->json(['success' => true, 'data' => $activoArea, 'message' => 'Activo asignado exitosamente'], 201);
+            return response()->json([
+                'success' => true,
+                'data' => $activoArea,
+                'message' => 'Activo asignado exitosamente',
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Error al asignar activo: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al asignar el activo'], 500);
+        }
     }
 
     /**
      * Actualizar la asignación de un activo a un área
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): JsonResponse
     {
         $activoArea = ActivoArea::find($id);
         if (!$activoArea) {
@@ -82,25 +163,39 @@ class ActivoAreaController extends Controller
             return response()->json(['success' => false, 'message' => 'El activo ya está asignado a esta área'], 409);
         }
 
-        $activoArea->update([
-            'idActivo' => $request->idActivo,
-            'idArea' => $request->idArea,
-        ]);
+        try {
+            $activoArea->update([
+                'idActivo' => $request->idActivo,
+                'idArea' => $request->idArea,
+            ]);
 
-        return response()->json(['success' => true, 'data' => $activoArea, 'message' => 'Asignación actualizada exitosamente'], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $activoArea,
+                'message' => 'Asignación actualizada exitosamente',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar asignación: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al actualizar la asignación'], 500);
+        }
     }
 
     /**
      * Eliminar la asignación de un activo a un área
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         $activoArea = ActivoArea::find($id);
         if (!$activoArea) {
             return response()->json(['success' => false, 'message' => 'Relación no encontrada'], 404);
         }
 
-        $activoArea->delete();
-        return response()->json(['success' => true, 'message' => 'Asignación eliminada exitosamente'], 200);
+        try {
+            $activoArea->delete();
+            return response()->json(['success' => true, 'message' => 'Asignación eliminada exitosamente'], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar asignación: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al eliminar la asignación'], 500);
+        }
     }
 }

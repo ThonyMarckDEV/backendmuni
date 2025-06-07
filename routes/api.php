@@ -56,11 +56,12 @@ Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () {
     Route::put('/areas/{id}', [AreaController::class, 'update']);
     Route::delete('/areas/{id}', [AreaController::class, 'destroy']);
 
-    // Aactivos-Areas routes
+    // Activos-Areas routes
     Route::get('/areas/{idArea}/activos', [ActivoAreaController::class, 'index']);
     Route::post('/activos-areas', [ActivoAreaController::class, 'store']);
     Route::put('/activos-areas/{id}', [ActivoAreaController::class, 'update']);
     Route::delete('/activos-areas/{id}', [ActivoAreaController::class, 'destroy']);
+    Route::get('/getactivos', [ActivoAreaController::class, 'indexActivos']);
 
 
 });
@@ -87,5 +88,5 @@ Route::middleware(['auth.jwt', 'checkRoleMW:tecnico'])->group(function () {
 Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () { 
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::get('/activos', [ActivoController::class, 'index']);
+    
 });
