@@ -9,6 +9,8 @@ class Incidente extends Model
 {
     use HasFactory;
 
+     protected $primaryKey = 'idIncidente';
+
     protected $fillable = [
         'idActivo',
         'idUsuario',
@@ -17,6 +19,7 @@ class Incidente extends Model
         'titulo',
         'descripcion',
         'fecha_reporte',
+        'idArea',
         'estado',
     ];
 
@@ -28,7 +31,7 @@ class Incidente extends Model
 
     public function activo()
     {
-        return $this->belongsTo(Activo::class);
+        return $this->belongsTo(Activo::class,'idActivo', 'idActivo');
     }
 
      public function usuario()

@@ -25,6 +25,9 @@ class IncidenteController extends Controller
                         'activo' => $incidente->activo ? [
                             'idActivo' => $incidente->activo->idActivo,
                             'codigo_inventario' => $incidente->activo->codigo_inventario,
+                            'tipo' => $incidente->activo->tipo,
+                            'marca_modelo' => $incidente->activo->marca_modelo,
+                            'ubicacion' =>$incidente->activo->ubicacion,
                         ] : null,
                         'area' => $incidente->area ? [
                             'idArea' => $incidente->area->idArea,
@@ -71,6 +74,11 @@ class IncidenteController extends Controller
                 $validated['idUsuario'] = $user->idUsuario;
                 $validated['idArea'] = $user->datos->idArea;
 
+                // Verificar que idActivo esté presente
+                if (!isset($validated['idActivo'])) {
+                    throw new \Exception('El campo idActivo es requerido.');
+                }
+
                 $incidente = Incidente::create($validated);
                 $incidente->load(['activo', 'area']);
 
@@ -81,6 +89,9 @@ class IncidenteController extends Controller
                         'activo' => $incidente->activo ? [
                             'idActivo' => $incidente->activo->idActivo,
                             'codigo_inventario' => $incidente->activo->codigo_inventario,
+                            'tipo' => $incidente->activo->tipo,
+                            'marca_modelo' => $incidente->activo->marca_modelo,
+                            'ubicacion' =>$incidente->activo->ubicacion,
                         ] : null,
                         'area' => $incidente->area ? [
                             'idArea' => $incidente->area->idArea,
@@ -100,7 +111,7 @@ class IncidenteController extends Controller
                 Log::error('Error al registrar incidente: ' . $e->getMessage());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al registrar el incidente',
+                    'message' => 'Error al registrar el incidente: ' . $e->getMessage(),
                 ], 500);
             }
         });
@@ -111,7 +122,14 @@ class IncidenteController extends Controller
         return DB::transaction(function () use ($request, $id) {
             try {
                 $incidente = Incidente::findOrFail($id);
-                $incidente->update($request->validated());
+                $validated = $request->validated();
+
+                // Verificar que idActivo esté presente
+                if (!isset($validated['idActivo'])) {
+                    throw new \Exception('El campo idActivo es requerido.');
+                }
+
+                $incidente->update($validated);
                 $incidente->load(['activo', 'area']);
 
                 return response()->json([
@@ -121,6 +139,9 @@ class IncidenteController extends Controller
                         'activo' => $incidente->activo ? [
                             'idActivo' => $incidente->activo->idActivo,
                             'codigo_inventario' => $incidente->activo->codigo_inventario,
+                            'tipo' => $incidente->activo->tipo,
+                            'marca_modelo' => $incidente->activo->marca_modelo,
+                            'ubicacion' =>$incidente->activo->ubicacion,
                         ] : null,
                         'area' => $incidente->area ? [
                             'idArea' => $incidente->area->idArea,
@@ -145,7 +166,7 @@ class IncidenteController extends Controller
                 Log::error('Error al actualizar incidente: ' . $e->getMessage());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al actualizar el incidente',
+                    'message' => 'Error al actualizar el incidente: ' . $e->getMessage(),
                 ], 500);
             }
         });
@@ -163,6 +184,9 @@ class IncidenteController extends Controller
                     'activo' => $incidente->activo ? [
                         'idActivo' => $incidente->activo->idActivo,
                         'codigo_inventario' => $incidente->activo->codigo_inventario,
+                        'tipo' => $incidente->activo->tipo,
+                        'marca_modelo' => $incidente->activo->marca_modelo,
+                        'ubicacion' =>$incidente->activo->ubicacion,
                     ] : null,
                     'area' => $incidente->area ? [
                         'idArea' => $incidente->area->idArea,
@@ -207,7 +231,7 @@ class IncidenteController extends Controller
                 ->whereHas('areas', function ($query) use ($user) {
                     $query->where('activos_areas.idArea', $user->datos->idArea);
                 })
-                ->get(['idActivo', 'codigo_inventario','tipo','marca_modelo']);
+                ->get(['idActivo', 'codigo_inventario', 'tipo', 'marca_modelo']);
 
             return response()->json([
                 'success' => true,
@@ -226,23 +250,38 @@ class IncidenteController extends Controller
     public function generatePdf($id)
     {
         try {
-            $incidente = Incidente::with(['activo', 'area'])->findOrFail($id);
+            // Buscar el incidente por idIncidente con las relaciones activo y area
+            $incidente = Incidente::with([
+                'activo' => function ($query) {
+                    $query->select('idActivo', 'codigo_inventario', 'tipo', 'marca_modelo', 'ubicacion');
+                },
+                'area' => function ($query) {
+                    $query->select('idArea', 'nombre');
+                }
+            ])->findOrFail($id);
+
+            // Generar el PDF usando la vista incidentes.pdf
             $pdf = Pdf::loadView('incidentes.pdf', ['incidente' => $incidente]);
+
+            // Descargar el PDF con un nombre basado en idIncidente
             return $pdf->download('incidente_' . $id . '.pdf');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::warning('Incidente no encontrado: idIncidente ' . $id);
             return response()->json([
                 'success' => false,
                 'message' => 'Incidente no encontrado',
             ], 404);
         } catch (\Exception $e) {
-            Log::error('Error al generar PDF del incidente: ' . $e->getMessage());
+            Log::error('Error al generar PDF del incidente: ' . $e->getMessage(), [
+                'idIncidente' => $id,
+                'stack' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Error al generar el PDF',
+                'message' => 'Error al generar el PDF: ' . $e->getMessage(),
             ], 500);
         }
     }
-
     
     public function getUserData(): JsonResponse
     {
