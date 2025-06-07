@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-       Schema::create('incidentes', function (Blueprint $table) {
+        Schema::create('incidentes', function (Blueprint $table) {
             $table->bigIncrements('idIncidente');
             $table->unsignedBigInteger('idActivo');
             $table->foreign('idActivo')->references('idActivo')->on('activos')->onDelete('cascade');
@@ -20,10 +20,11 @@ return new class extends Migration
             $table->string('titulo');
             $table->text('descripcion');
             $table->date('fecha_reporte');
+            $table->unsignedBigInteger('idArea')->nullable()->comment('Id del Area del usuario reportante');
+            $table->foreign('idArea')->references('idArea')->on('areas')->onDelete('set null');
             $table->tinyInteger('estado')->default(0)->comment('0: Pendiente, 1: En progreso, 2: Resuelto');
             $table->timestamps();
         });
-
     }
 
     public function down(): void

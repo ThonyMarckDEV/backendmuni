@@ -14,7 +14,7 @@ class StoreIncidenteRequest extends FormRequest
     public function rules()
     {
         return [
-            'activo_id' => 'required|exists:activos,id',
+            'activo_id' => 'required|exists:activos,idActivo',
             'titulo' => 'nullable|string|max:255',
             'descripcion' => 'required|string|max:1000',
             'fecha_reporte' => 'required|date',

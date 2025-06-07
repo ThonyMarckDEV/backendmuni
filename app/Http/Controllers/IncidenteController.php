@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateIncidenteRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class IncidenteController extends Controller
@@ -16,7 +17,29 @@ class IncidenteController extends Controller
     public function index(): JsonResponse
     {
         try {
-            $incidentes = Incidente::with('activo')->paginate(15);
+            $incidentes = Incidente::with(['activo', 'area'])
+                ->paginate(15)
+                ->through(function ($incidente) {
+                    return [
+                        'idIncidente' => $incidente->idIncidente,
+                        'activo' => $incidente->activo ? [
+                            'idActivo' => $incidente->activo->idActivo,
+                            'codigo_inventario' => $incidente->activo->codigo_inventario,
+                        ] : null,
+                        'area' => $incidente->area ? [
+                            'idArea' => $incidente->area->idArea,
+                            'nombre' => $incidente->area->nombre,
+                        ] : null,
+                        'prioridad' => $incidente->prioridad,
+                        'titulo' => $incidente->titulo,
+                        'descripcion' => $incidente->descripcion,
+                        'fecha_reporte' => $incidente->fecha_reporte,
+                        'estado' => $incidente->estado,
+                        'created_at' => $incidente->created_at,
+                        'updated_at' => $incidente->updated_at,
+                    ];
+                });
+
             return response()->json([
                 'success' => true,
                 'data' => $incidentes,
@@ -35,13 +58,42 @@ class IncidenteController extends Controller
     {
         return DB::transaction(function () use ($request) {
             try {
+                $user = Auth::user();
+                if (!$user || !$user->datos || !$user->datos->idArea) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Usuario no autenticado o sin área asignada',
+                    ], 403);
+                }
+
                 $validated = $request->validated();
-                $validated['estado'] = 0; // Force estado to 0 (Pendiente) for new incidents
+                $validated['estado'] = 0; // Pendiente
+                $validated['idUsuario'] = $user->idUsuario;
+                $validated['idArea'] = $user->datos->idArea;
+
                 $incidente = Incidente::create($validated);
-                $incidente->load('activo');
+                $incidente->load(['activo', 'area']);
+
                 return response()->json([
                     'success' => true,
-                    'data' => $incidente,
+                    'data' => [
+                        'idIncidente' => $incidente->idIncidente,
+                        'activo' => $incidente->activo ? [
+                            'idActivo' => $incidente->activo->idActivo,
+                            'codigo_inventario' => $incidente->activo->codigo_inventario,
+                        ] : null,
+                        'area' => $incidente->area ? [
+                            'idArea' => $incidente->area->idArea,
+                            'nombre' => $incidente->area->nombre,
+                        ] : null,
+                        'prioridad' => $incidente->prioridad,
+                        'titulo' => $incidente->titulo,
+                        'descripcion' => $incidente->descripcion,
+                        'fecha_reporte' => $incidente->fecha_reporte,
+                        'estado' => $incidente->estado,
+                        'created_at' => $incidente->created_at,
+                        'updated_at' => $incidente->updated_at,
+                    ],
                     'message' => 'Incidente registrado exitosamente',
                 ], 201);
             } catch (\Exception $e) {
@@ -59,11 +111,29 @@ class IncidenteController extends Controller
         return DB::transaction(function () use ($request, $id) {
             try {
                 $incidente = Incidente::findOrFail($id);
-                $incidente->update($request->validated()); // Update prioridad along with other fields
-                $incidente->load('activo');
+                $incidente->update($request->validated());
+                $incidente->load(['activo', 'area']);
+
                 return response()->json([
                     'success' => true,
-                    'data' => $incidente,
+                    'data' => [
+                        'idIncidente' => $incidente->idIncidente,
+                        'activo' => $incidente->activo ? [
+                            'idActivo' => $incidente->activo->idActivo,
+                            'codigo_inventario' => $incidente->activo->codigo_inventario,
+                        ] : null,
+                        'area' => $incidente->area ? [
+                            'idArea' => $incidente->area->idArea,
+                            'nombre' => $incidente->area->nombre,
+                        ] : null,
+                        'prioridad' => $incidente->prioridad,
+                        'titulo' => $incidente->titulo,
+                        'descripcion' => $incidente->descripcion,
+                        'fecha_reporte' => $incidente->fecha_reporte,
+                        'estado' => $incidente->estado,
+                        'created_at' => $incidente->created_at,
+                        'updated_at' => $incidente->updated_at,
+                    ],
                     'message' => 'Incidente actualizado exitosamente',
                 ]);
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -84,10 +154,28 @@ class IncidenteController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $incidente = Incidente::with('activo')->findOrFail($id);
+            $incidente = Incidente::with(['activo', 'area'])->findOrFail($id);
+
             return response()->json([
                 'success' => true,
-                'data' => $incidente,
+                'data' => [
+                    'idIncidente' => $incidente->idIncidente,
+                    'activo' => $incidente->activo ? [
+                        'idActivo' => $incidente->activo->idActivo,
+                        'codigo_inventario' => $incidente->activo->codigo_inventario,
+                    ] : null,
+                    'area' => $incidente->area ? [
+                        'idArea' => $incidente->area->idArea,
+                        'nombre' => $incidente->area->nombre,
+                    ] : null,
+                    'prioridad' => $incidente->prioridad,
+                    'titulo' => $incidente->titulo,
+                    'descripcion' => $incidente->descripcion,
+                    'fecha_reporte' => $incidente->fecha_reporte,
+                    'estado' => $incidente->estado,
+                    'created_at' => $incidente->created_at,
+                    'updated_at' => $incidente->updated_at,
+                ],
                 'message' => 'Incidente obtenido exitosamente',
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -107,7 +195,20 @@ class IncidenteController extends Controller
     public function getActivos(): JsonResponse
     {
         try {
-            $activos = Activo::where('estado', true)->get(['id', 'codigo_inventario']);
+            $user = Auth::user();
+            if (!$user || !$user->datos || !$user->datos->idArea) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no autenticado o sin área asignada',
+                ], 403);
+            }
+
+            $activos = Activo::where('estado', true)
+                ->whereHas('areas', function ($query) use ($user) {
+                    $query->where('activos_areas.idArea', $user->datos->idArea);
+                })
+                ->get(['idActivo', 'codigo_inventario','tipo','marca_modelo']);
+
             return response()->json([
                 'success' => true,
                 'data' => $activos,
@@ -125,7 +226,7 @@ class IncidenteController extends Controller
     public function generatePdf($id)
     {
         try {
-            $incidente = Incidente::with('activo')->findOrFail($id);
+            $incidente = Incidente::with(['activo', 'area'])->findOrFail($id);
             $pdf = Pdf::loadView('incidentes.pdf', ['incidente' => $incidente]);
             return $pdf->download('incidente_' . $id . '.pdf');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -138,6 +239,47 @@ class IncidenteController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al generar el PDF',
+            ], 500);
+        }
+    }
+
+    
+    public function getUserData(): JsonResponse
+    {
+        try {
+            $user = Auth::user()->load('datos.area');
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no autenticado',
+                ], 401);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'idUsuario' => $user->idUsuario,
+                    'datos' => $user->datos ? [
+                        'idDatos' => $user->datos->idDatos,
+                        'nombre' => $user->datos->nombre,
+                        'apellido' => $user->datos->apellido,
+                        'email' => $user->datos->email,
+                        'dni' => $user->datos->dni,
+                        'telefono' => $user->datos->telefono,
+                        'especializacion' => $user->datos->especializacion,
+                        'area' => $user->datos->area ? [
+                            'idArea' => $user->datos->area->idArea,
+                            'nombre' => $user->datos->area->nombre,
+                        ] : null,
+                    ] : null,
+                ],
+                'message' => 'Datos del usuario obtenidos exitosamente',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al obtener datos del usuario: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los datos del usuario',
             ], 500);
         }
     }

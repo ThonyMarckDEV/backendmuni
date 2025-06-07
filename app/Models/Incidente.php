@@ -30,4 +30,19 @@ class Incidente extends Model
     {
         return $this->belongsTo(Activo::class);
     }
+
+     public function usuario()
+    {
+        return $this->belongsTo(User::class, 'idUsuario', 'idUsuario');
+    }
+
+    public function tecnico()
+    {
+        return $this->belongsTo(User::class, 'idTecnico', 'idUsuario');
+    }
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class, 'idArea', 'idArea');
+    }
 }
