@@ -77,6 +77,7 @@ Route::middleware(['auth.jwt', 'checkRoleMW:usuario'])->group(function () {
     Route::put('/incidentes/{id}', [IncidenteController::class, 'update']);
     Route::get('/incidentes/{id}/pdf', [IncidenteController::class, 'generatePdf']);
     Route::get('/userArea', [IncidenteController::class, 'getUserData']);
+
 });
 
 
