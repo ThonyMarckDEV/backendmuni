@@ -276,7 +276,7 @@ class IncidenteController extends Controller
                 'message' => 'Datos del usuario obtenidos exitosamente',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error al obtener datos del usuario: ' . $e->getMessage());
+            Log::error('Error al obtener datos del usuario: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener los datos del usuario',

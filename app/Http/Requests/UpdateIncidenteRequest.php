@@ -6,34 +6,43 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateIncidenteRequest extends FormRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
         return true; // Adjust based on your authorization logic
     }
 
-    public function rules()
+    public function rules(): array
     {
         return [
-            'activo_id' => 'required|exists:activos,idActivo',
+            'idActivo' => 'required|exists:activos,idActivo',
             'titulo' => 'nullable|string|max:255',
             'descripcion' => 'required|string|max:1000',
             'fecha_reporte' => 'required|date',
-            'prioridad' => 'required|integer|in:0,1,2', // Validate prioridad
+            'prioridad' => 'required|integer|in:0,1,2',
         ];
     }
 
-    public function messages()
+    public function messages(): array
     {
         return [
-            'activo_id.required' => 'El activo es requerido.',
-            'activo_id.exists' => 'El activo seleccionado no existe.',
+            'idActivo.required' => 'El activo es requerido.',
+            'idActivo.exists' => 'El activo seleccionado no existe.',
             'titulo.max' => 'El título no debe exceder los 255 caracteres.',
             'descripcion.required' => 'La descripción es requerida.',
+            'descripcion.max' => 'La descripción no debe exceder los 1000 caracteres.',
             'fecha_reporte.required' => 'La fecha de reporte es requerida.',
             'fecha_reporte.date' => 'La fecha de reporte debe ser una fecha válida.',
             'prioridad.required' => 'La prioridad es requerida.',
             'prioridad.integer' => 'La prioridad debe ser un número entero.',
             'prioridad.in' => 'La prioridad debe ser 0 (Baja), 1 (Media) o 2 (Alta).',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Renombrar activo_id a idActivo para coincidir con la columna de la tabla
+        $this->merge([
+            'idActivo' => $this->activo_id,
+        ]);
     }
 }
