@@ -24,23 +24,31 @@ class ActivoAreaController extends Controller
                 return response()->json(['success' => false, 'message' => 'Área no encontrada'], 404);
             }
 
-            $activos = $area->activos()->with(['areas' => function ($query) {
-                $query->select('areas.idArea', 'areas.nombre');
-            }])->get()->map(function ($activo) {
-                return [
-                    'idActivo' => $activo->idActivo,
-                    'codigo_inventario' => $activo->codigo_inventario,
-                    'tipo' => $activo->tipo,
-                    'marca_modelo' => $activo->marca_modelo,
-                    'estado' => $activo->estado,
-                    'assigned_area' => $activo->areas->isNotEmpty() ? [
-                        'idArea' => $activo->areas->first()->idArea,
-                        'nombre' => $activo->areas->first()->nombre
-                    ] : null,
-                    'created_at' => $activo->created_at,
-                    'updated_at' => $activo->updated_at,
-                ];
-            });
+            $activos = ActivoArea::where('idArea', $idArea)
+                ->with(['activo' => function ($query) {
+                    $query->select('idActivo', 'codigo_inventario', 'tipo', 'marca_modelo', 'estado');
+                }, 'area' => function ($query) {
+                    $query->select('idArea', 'nombre');
+                }])
+                ->get()
+                ->map(function ($activoArea) {
+                    $activo = $activoArea->activo;
+                    return [
+                        'idActivoArea' => $activoArea->id, // Primary key of activos_areas
+                        'idActivo' => $activo->idActivo,
+                        'idArea' => $activoArea->idArea,
+                        'codigo_inventario' => $activo->codigo_inventario,
+                        'tipo' => $activo->tipo,
+                        'marca_modelo' => $activo->marca_modelo,
+                        'estado' => $activo->estado,
+                        'area' => [
+                            'idArea' => $activoArea->area->idArea,
+                            'nombre' => $activoArea->area->nombre,
+                        ],
+                        'created_at' => $activoArea->created_at,
+                        'updated_at' => $activoArea->updated_at,
+                    ];
+                });
 
             return response()->json(['success' => true, 'data' => $activos, 'message' => 'Activos obtenidos exitosamente'], 200);
         } catch (\Exception $e) {
