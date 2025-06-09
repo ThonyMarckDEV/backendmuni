@@ -6,7 +6,8 @@
    use App\Models\Activo;
    use App\Http\Requests\StoreIncidenteRequest;
    use App\Http\Requests\UpdateIncidenteRequest;
-   use Illuminate\Http\JsonResponse;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
    use Illuminate\Support\Facades\DB;
    use Illuminate\Support\Facades\Log;
    use Illuminate\Support\Facades\Auth;
@@ -126,64 +127,84 @@
            });
        }
 
-       public function update(UpdateIncidenteRequest $request, $id): JsonResponse
-       {
-           return DB::transaction(function () use ($request, $id) {
-               try {
-                   $incidente = Incidente::findOrFail($id);
-                   $validated = $request->validated();
+     public function update(UpdateIncidenteRequest $request, $id): JsonResponse
+    {
+        return DB::transaction(function () use ($request, $id) {
+            try {
+                $incidente = Incidente::findOrFail($id);
+                $validated = $request->validated();
+                $user = Auth::user();
+                $isAdmin = $user && $user->idRol === 1;
 
-                   if (!isset($validated['idActivo'])) {
-                       throw new \Exception('El campo idActivo es requerido.');
-                   }
+                // Prepare data for update
+                $data = [
+                    'idActivo' => $validated['idActivo'],
+                ];
 
-                   $incidente->update($validated);
-                   $incidente->load(['activo', 'area', 'tecnico.datos']);
+                if ($isAdmin) {
+                    // Admins can update idTecnico and estado
+                    if (array_key_exists('idTecnico', $validated)) {
+                        $data['idTecnico'] = $validated['idTecnico'];
+                    }
+                    if (array_key_exists('estado', $validated)) {
+                        $data['estado'] = $validated['estado'];
+                    }
+                } else {
+                    // Non-admins update full fields
+                    $data = array_merge($data, [
+                        'descripcion' => $validated['descripcion'],
+                        'fecha_reporte' => $validated['fecha_reporte'],
+                        'prioridad' => $validated['prioridad'],
+                    ]);
+                }
 
-                   return response()->json([
-                       'success' => true,
-                       'data' => [
-                           'idIncidente' => $incidente->idIncidente,
-                           'activo' => $incidente->activo ? [
-                               'idActivo' => $incidente->activo->idActivo,
-                               'codigo_inventario' => $incidente->activo->codigo_inventario,
-                               'tipo' => $incidente->activo->tipo,
-                               'marca_modelo' => $incidente->activo->marca_modelo,
-                               'ubicacion' => $incidente->activo->ubicacion,
-                           ] : null,
-                           'area' => $incidente->area ? [
-                               'idArea' => $incidente->area->idArea,
-                               'nombre' => $incidente->area->nombre,
-                           ] : null,
-                           'tecnico' => $incidente->tecnico && $incidente->tecnico->datos ? [
-                               'idUsuario' => $incidente->tecnico->idUsuario,
-                               'nombre' => $incidente->tecnico->datos->nombre,
-                               'apellido' => $incidente->tecnico->datos->apellido,
-                           ] : null,
-                           'prioridad' => $incidente->prioridad,
-                           'titulo' => $incidente->titulo,
-                           'descripcion' => $incidente->descripcion,
-                           'fecha_reporte' => $incidente->fecha_reporte,
-                           'estado' => $incidente->estado,
-                           'created_at' => $incidente->created_at,
-                           'updated_at' => $incidente->updated_at,
-                       ],
-                       'message' => 'Incidente actualizado exitosamente',
-                   ]);
-               } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-                   return response()->json([
-                       'success' => false,
-                       'message' => 'Incidente no encontrado',
-                   ], 404);
-               } catch (\Exception $e) {
-                   Log::error('Error al actualizar incidente: ' . $e->getMessage());
-                   return response()->json([
-                       'success' => false,
-                       'message' => 'Error al actualizar el incidente: ' . $e->getMessage(),
-                   ], 500);
-               }
-           });
-       }
+                $incidente->update($data);
+                $incidente->load(['activo', 'area', 'tecnico.datos']);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'idIncidente' => $incidente->idIncidente,
+                        'activo' => $incidente->activo ? [
+                            'idActivo' => $incidente->activo->idActivo,
+                            'codigo_inventario' => $incidente->activo->codigo_inventario,
+                            'tipo' => $incidente->activo->tipo,
+                            'marca_modelo' => $incidente->activo->marca_modelo,
+                            'ubicacion' => $incidente->activo->ubicacion,
+                        ] : null,
+                        'area' => $incidente->area ? [
+                            'idArea' => $incidente->area->idArea,
+                            'nombre' => $incidente->area->nombre,
+                        ] : null,
+                        'tecnico' => $incidente->tecnico && $incidente->tecnico->datos ? [
+                            'idUsuario' => $incidente->tecnico->idUsuario,
+                            'nombre' => $incidente->tecnico->datos->nombre,
+                            'apellido' => $incidente->tecnico->datos->apellido,
+                        ] : null,
+                        'prioridad' => $incidente->prioridad,
+                        'titulo' => $incidente->titulo,
+                        'descripcion' => $incidente->descripcion,
+                        'fecha_reporte' => $incidente->fecha_reporte,
+                        'estado' => $incidente->estado,
+                        'created_at' => $incidente->created_at,
+                        'updated_at' => $incidente->updated_at,
+                    ],
+                    'message' => 'Incidente actualizado exitosamente',
+                ]);
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Incidente no encontrado',
+                ], 404);
+            } catch (\Exception $e) {
+                Log::error('Error al actualizar incidente: ' . $e->getMessage(), ['id' => $id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al actualizar el incidente: ' . $e->getMessage(),
+                ], 500);
+            }
+        });
+    }
 
        public function show($id): JsonResponse
        {
@@ -340,4 +361,33 @@
                ], 500);
            }
        }
-   }
+
+        public function getTechnicians(): JsonResponse
+        {
+            try {
+               $technicians = User::where('idRol', 3)
+                ->whereNotNull('idDatos') // opcional, para evitar usuarios sin datos
+                ->with('datos') // traer toda la relación
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'idUsuario' => $user->idUsuario,
+                        'nombre' => $user->datos->nombre ?? '',
+                        'apellido' => $user->datos->apellido ?? '',
+                    ];
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $technicians,
+                    'message' => 'Técnicos obtenidos exitosamente',
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error al obtener técnicos: ' . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al obtener los técnicos',
+                ], 500);
+            }
+        }
+}

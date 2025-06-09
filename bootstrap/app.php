@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckRoleMW;
+use App\Http\Middleware\CheckRolesAdmin_Usuario;
 use App\Http\Middleware\CheckRolesMW;
 use App\Http\Middleware\CorsMiddleware;
 use App\Http\Middleware\JWTAuthMiddleware;
@@ -22,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'checkRoleMW' =>CheckRoleMW::class,
             //MIDDLEWARE PARA VERIFICAR ROL MULTIPLE
             'checkRolesMW' =>CheckRolesMW::class,
+            //MIDDLEWARE PARA VERIFICAR ROL ADMIN Y USUARIO
+            'CheckRolesAdmin_Usuario'=>CheckRolesAdmin_Usuario::class,
             //MIDDLEWARE PARA AUTH DEL TOKEN
             'auth.jwt' =>JWTAuthMiddleware::class,
             //MIDDLEWARE CORS

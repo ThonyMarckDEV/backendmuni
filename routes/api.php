@@ -63,11 +63,33 @@ Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () {
     Route::delete('/activos-areas/{id}', [ActivoAreaController::class, 'destroy']);
     Route::get('/getactivos', [ActivoAreaController::class, 'indexActivos']);
 
+    // Rutas Incidentes
+    Route::get('/incidentes/tecnicos', [IncidenteController::class, 'getTechnicians'])->name('incidentes.tecnicos');
 
 });
 
 // RUTAS PARA X VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
 Route::middleware(['auth.jwt', 'checkRoleMW:usuario'])->group(function () { 
+
+
+
+});
+
+
+// RUTAS PARA ADMIN VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
+Route::middleware(['auth.jwt', 'checkRoleMW:tecnico'])->group(function () { 
+});
+
+// RUTAS PARA Todos los Roles
+Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () { 
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    
+
+});
+
+// RUTAS PARA Rol Admin y Usuario
+Route::middleware(['auth.jwt', 'CheckRolesAdmin_Usuario'])->group(function () { 
 
     // Incidente routes
     Route::get('/incidentes', [IncidenteController::class, 'index']);
@@ -77,16 +99,5 @@ Route::middleware(['auth.jwt', 'checkRoleMW:usuario'])->group(function () {
     Route::put('/incidentes/{id}', [IncidenteController::class, 'update']);
     Route::get('/incidentes/{id}/pdf', [IncidenteController::class, 'generatePdf']);
     Route::get('/userArea', [IncidenteController::class, 'getUserData']);
-
-});
-
-
-// RUTAS PARA ADMIN VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
-Route::middleware(['auth.jwt', 'checkRoleMW:tecnico'])->group(function () { 
-});
-
-// RUTAS PARA Roles Admin y Cliente
-Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () { 
-    Route::post('/logout', [AuthController::class, 'logout']);
 
 });
