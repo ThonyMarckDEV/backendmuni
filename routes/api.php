@@ -78,6 +78,7 @@ Route::middleware(['auth.jwt', 'checkRoleMW:usuario'])->group(function () {
 
 // RUTAS PARA ADMIN VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
 Route::middleware(['auth.jwt', 'checkRoleMW:tecnico'])->group(function () { 
+    
 });
 
 // RUTAS PARA Todos los Roles

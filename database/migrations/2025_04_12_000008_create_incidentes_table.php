@@ -23,6 +23,7 @@ return new class extends Migration
             $table->unsignedBigInteger('idArea')->nullable()->comment('Id del Area del usuario reportante');
             $table->foreign('idArea')->references('idArea')->on('areas')->onDelete('set null');
             $table->tinyInteger('estado')->default(0)->comment('0: Pendiente, 1: En progreso, 2: Resuelto');
+            $table->text('comentarios_tecnico')->nullable()->comment('Observaciones del incidente');
             $table->timestamps();
         });
     }
