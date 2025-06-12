@@ -21,6 +21,7 @@ class Incidente extends Model
         'fecha_reporte',
         'idArea',
         'estado',
+        'comentarios_tecnico'
     ];
 
     protected $casts = [
