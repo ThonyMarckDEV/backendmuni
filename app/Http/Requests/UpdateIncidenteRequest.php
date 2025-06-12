@@ -7,33 +7,32 @@ use Illuminate\Support\Facades\Auth;
 
 class UpdateIncidenteRequest extends FormRequest
 {
-
     public function rules(): array
     {
         $user = Auth::user();
+        $isTechnician = $user && $user->idRol === 3;
         $isAdmin = $user && $user->idRol === 1;
 
-        // Base rules for all roles
-        $rules = [
-            'idActivo' => 'required|exists:activos,idActivo',
-        ];
-
-        if ($isAdmin) {
-            // Admins only need idTecnico and estado (optional)
-            $rules = array_merge($rules, [
-                'idTecnico' => 'nullable|exists:usuarios,idUsuario,estado,1,idRol,3', // Active technicians only
+        if ($isTechnician) {
+            return [
+                'estado' => 'required|integer|in:2',
+                'comentarios_tecnico' => 'nullable|string|max:1000',
+            ];
+        } elseif ($isAdmin) {
+            return [
+                'idActivo' => 'required|exists:activos,idActivo',
+                'idTecnico' => 'nullable|exists:usuarios,idUsuario,estado,1,idRol,3',
                 'estado' => 'nullable|integer|in:0,1,2',
-            ]);
+            ];
         } else {
-            // Non-admins (e.g., idRol = 2) require full fields
-            $rules = array_merge($rules, [
+            return [
+                'idActivo' => 'required|exists:activos,idActivo',
+                'titulo' => 'required|string|max:255',
                 'descripcion' => 'required|string|max:1000',
                 'fecha_reporte' => 'required|date',
                 'prioridad' => 'required|integer|in:0,1,2',
-            ]);
+            ];
         }
-
-        return $rules;
     }
 
     public function messages(): array
@@ -42,9 +41,16 @@ class UpdateIncidenteRequest extends FormRequest
             'idActivo.required' => 'El activo es requerido.',
             'idActivo.exists' => 'El activo seleccionado no existe.',
             'idTecnico.exists' => 'El técnico seleccionado no existe o no es válido.',
+            'estado.required' => 'El estado es requerido.',
             'estado.integer' => 'El estado debe ser un número entero.',
-            'estado.in' => 'El estado debe ser 0 (Pendiente), 1 (En progreso) o 2 (Resuelto).',
+            'estado.in' => 'El estado debe ser Resuelto (2) para técnicos o 0, 1, 2 para administradores.',
+            'comentarios_tecnico.string' => 'Los comentarios del técnico deben ser una cadena de texto.',
+            'comentarios_tecnico.max' => 'Los comentarios del técnico no deben exceder los 1000 caracteres.',
+            'titulo.required' => 'El título es requerido.',
+            'titulo.string' => 'El título debe ser una cadena de texto.',
+            'titulo.max' => 'El título no puede exceder los 255 caracteres.',
             'descripcion.required' => 'La descripción es requerida.',
+            'descripcion.string' => 'La descripción debe ser una cadena de texto.',
             'descripcion.max' => 'La descripción no debe exceder los 1000 caracteres.',
             'fecha_reporte.required' => 'La fecha de reporte es requerida.',
             'fecha_reporte.date' => 'La fecha de reporte debe ser una fecha válida.',

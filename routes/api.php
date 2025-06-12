@@ -85,13 +85,6 @@ Route::middleware(['auth.jwt', 'checkRoleMW:tecnico'])->group(function () {
 Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () { 
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    
-
-});
-
-// RUTAS PARA Rol Admin y Usuario
-Route::middleware(['auth.jwt', 'CheckRolesAdmin_Usuario'])->group(function () { 
-
     // Incidente routes
     Route::get('/incidentes', [IncidenteController::class, 'index']);
     Route::post('/incidentes', [IncidenteController::class, 'store']);
@@ -100,5 +93,12 @@ Route::middleware(['auth.jwt', 'CheckRolesAdmin_Usuario'])->group(function () {
     Route::put('/incidentes/{id}', [IncidenteController::class, 'update']);
     Route::get('/incidentes/{id}/pdf', [IncidenteController::class, 'generatePdf']);
     Route::get('/userArea', [IncidenteController::class, 'getUserData']);
+
+});
+
+// RUTAS PARA Rol Admin y Usuario
+Route::middleware(['auth.jwt', 'CheckRolesAdmin_Usuario'])->group(function () { 
+
+
 
 });
