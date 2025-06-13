@@ -493,6 +493,7 @@ class IncidenteController extends Controller
                         'idUsuario' => $user->idUsuario,
                         'nombre' => $user->datos->nombre ?? '',
                         'apellido' => $user->datos->apellido ?? '',
+                        'especializacion' => $user->datos->especializacion ?? '',
                     ];
                 });
 
