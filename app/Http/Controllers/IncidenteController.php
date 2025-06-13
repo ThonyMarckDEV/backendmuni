@@ -12,10 +12,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 
 class IncidenteController extends Controller
 {
- public function index(): JsonResponse
+  public function index(Request $request): JsonResponse
     {
         try {
             $user = Auth::user();
@@ -27,18 +28,36 @@ class IncidenteController extends Controller
             }
 
             $isTechnician = $user->idRol === 3;
-            $isAdmin = $user->idRol === 1;
             $isUser = $user->idRol === 2;
+            $isAdmin = $user->idRol === 1;
 
             $query = Incidente::with(['activo', 'area', 'tecnico.datos']);
 
+            // Apply role-based filters
             if ($isTechnician) {
                 $query->where('idTecnico', $user->idUsuario);
             } elseif ($isUser) {
                 $query->where('idUsuario', $user->idUsuario);
             } // Admins get all incidents, no additional filter needed
 
-            $incidentes = $query->paginate(15)
+            // Apply new filters from request
+            if ($request->has('idIncidente') && is_numeric($request->idIncidente)) {
+                $query->where('idIncidente', $request->idIncidente);
+            }
+
+            if ($request->has('estado') && $request->estado !== 'all' && in_array($request->estado, ['0', '1', '2'])) {
+                $query->where('estado', $request->estado);
+            }
+
+            if ($request->has('fecha_inicio') && !empty($request->fecha_inicio)) {
+                $query->whereDate('fecha_reporte', '>=', $request->fecha_inicio);
+            }
+
+            if ($request->has('fecha_fin') && !empty($request->fecha_fin)) {
+                $query->whereDate('fecha_reporte', '<=', $request->fecha_fin);
+            }
+
+            $incidentes = $query->paginate(3)
                 ->through(function ($incidente) {
                     return [
                         'idIncidente' => $incidente->idIncidente,
