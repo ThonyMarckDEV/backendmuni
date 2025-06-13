@@ -36,6 +36,10 @@ class IncidenteController extends Controller
             // Apply role-based filters
             if ($isTechnician) {
                 $query->where('idTecnico', $user->idUsuario);
+                // Apply default estado = 1 filter for technicians if no estado is provided
+                if (!$request->has('estado') || $request->estado === 'all') {
+                    $query->where('estado', '1');
+                }
             } elseif ($isUser) {
                 $query->where('idUsuario', $user->idUsuario);
             } // Admins get all incidents, no additional filter needed
