@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivoAreaController;
 use App\Http\Controllers\ActivoController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncidenteController;
 use App\Http\Controllers\AuthGoogleController;
 use App\Http\Controllers\CarritoController;
@@ -66,6 +67,11 @@ Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () {
     // Rutas Incidentes
     Route::get('/incidentes/tecnicos', [IncidenteController::class, 'getTechnicians'])->name('incidentes.tecnicos');
 
+    //Rutas Dashboard
+    Route::get('/assets-by-area', [DashboardController::class, 'getActivosporArea']);
+    Route::get('/users-by-area', [DashboardController::class, 'getUsersByArea']);
+    Route::get('/areas-data', [DashboardController::class, 'getAreasData']);
+    Route::get('/incidents-data', [DashboardController::class, 'getIncidentsData']);
 });
 
 // RUTAS PARA X VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
