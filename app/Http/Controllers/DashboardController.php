@@ -9,34 +9,174 @@ use App\Models\Datos;
 use App\Models\Incidente;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
-    /**
-     * Get all dashboard data for assets.
+      /**
+     * Get dashboard data for assets based on user role.
+     * idRol = 1: All active assets across all areas.
+     * idRol = 2: Assets in the user's assigned area.
+     * idRol = 3: Unauthorized (technicians don't access assets).
      */
     public function getActivosporArea()
     {
         try {
-            $totalAssets = Activo::where('estado', 1)->count();
+            // Get the authenticated user
+            $user = Auth::user();
 
-            $assetsByArea = ActivoArea::select('areas.nombre as area', DB::raw('count(activos_areas.idActivo) as count'))
+            // Initialize $userData for idRol = 2
+            $userData = null;
+            if ($user->idRol == 2) {
+                $userData = Datos::where('idDatos', $user->idDatos)->first();
+                if (!$userData || !$userData->idArea) {
+                    return response()->json([
+                        'error' => 'No area assigned',
+                        'message' => 'User has no assigned area',
+                    ], 404);
+                }
+            }
+
+            // Initialize query
+            $query = ActivoArea::join('activos', 'activos_areas.idActivo', '=', 'activos.idActivo')
                 ->join('areas', 'activos_areas.idArea', '=', 'areas.idArea')
-                ->join('activos', 'activos_areas.idActivo', '=', 'activos.idActivo')
-                ->where('activos.estado', 1)
+                ->where('activos.estado', 1);
+
+            // Filter by area for idRol = 2
+            if ($user->idRol == 2) {
+                $query->where('activos_areas.idArea', $userData->idArea);
+            }
+
+            // Get total number of active assets
+            $totalAssets = $query->count();
+
+            // Get assets grouped by area
+            $assetsByArea = $query->select(
+                'areas.nombre as area',
+                DB::raw('count(activos_areas.idActivo) as count')
+            )
                 ->groupBy('areas.idArea', 'areas.nombre')
+                ->get();
+
+            // Get detailed asset information (no GROUP BY)
+            $assetsDetailsQuery = ActivoArea::select(
+                'areas.nombre as area',
+                'activos.codigo_inventario',
+                'activos.marca_modelo',
+                'activos.tipo',
+                'activos.ubicacion'
+            )
+                ->join('activos', 'activos_areas.idActivo', '=', 'activos.idActivo')
+                ->join('areas', 'activos_areas.idArea', '=', 'areas.idArea')
+                ->where('activos.estado', 1);
+
+            // Apply area filter for idRol = 2
+            if ($user->idRol == 2 && $userData) {
+                $assetsDetailsQuery->where('activos_areas.idArea', $userData->idArea);
+            }
+
+            $assetsDetails = $assetsDetailsQuery->orderBy('areas.nombre')
+                ->orderBy('activos.codigo_inventario')
                 ->get();
 
             return response()->json([
                 'totalAssets' => $totalAssets,
                 'assetsByArea' => $assetsByArea,
+                'assetsDetails' => $assetsDetails,
             ], 200);
         } catch (\Exception $e) {
             Log::error('Error in getActivosporArea: ' . $e->getMessage());
             return response()->json([
-                'error' => 'Failed to fetch dashboard data',
+                'error' => 'Failed to fetch assets dashboard data',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get dashboard data for incidents based on user role.
+     * idRol = 1: All incidents.
+     * idRol = 2: Incidents reported by the user.
+     * idRol = 3: Incidents assigned to the technician.
+     */
+    public function getIncidentsData()
+    {
+        try {
+            // Get the authenticated user
+            $user = Auth::user();
+
+            // Initialize query
+            $query = Incidente::query();
+
+            // Filter based on role
+            if ($user->idRol == 2) {
+                // User: Incidents they reported
+                $query->where('idUsuario', $user->idUsuario);
+            } elseif ($user->idRol == 3) {
+                // Technician: Incidents assigned to them
+                $query->where('idTecnico', $user->idUsuario);
+            }
+            // idRol = 1: No filter (all incidents)
+
+            // Get total number of incidents
+            $totalIncidents = $query->count();
+
+            // Get incidents grouped by status
+            $incidentsByStatus = $query->select(
+                DB::raw('CASE 
+                    WHEN estado = 0 THEN "Pendiente" 
+                    WHEN estado = 1 THEN "En progreso" 
+                    WHEN estado = 2 THEN "Resuelto" 
+                    END as status'),
+                DB::raw('count(*) as count')
+            )
+                ->groupBy('estado')
+                ->get();
+
+            // Get detailed incident information
+            $detailsQuery = Incidente::select(
+                'incidentes.titulo',
+                'incidentes.descripcion',
+                'incidentes.fecha_reporte',
+                'incidentes.prioridad', // Raw numeric value (0, 1, 2)
+                'incidentes.estado', // Raw numeric value (0, 1, 2)
+                'areas.nombre as area',
+                DB::raw('CONCAT(activos.codigo_inventario, " - ", activos.marca_modelo, " (", activos.tipo, ")") as activo')
+            )
+                ->leftJoin('areas', 'incidentes.idArea', '=', 'areas.idArea')
+                ->join('activos', 'incidentes.idActivo', '=', 'activos.idActivo');
+
+            // Add technician/admin-specific fields
+            if (in_array($user->idRol, [1, 3])) {
+                $detailsQuery->addSelect(
+                    'incidentes.comentarios_tecnico',
+                    DB::raw('CONCAT(datos.nombre, " ", datos.apellido) as reportado_por')
+                )
+                    ->join('usuarios', 'incidentes.idUsuario', '=', 'usuarios.idUsuario')
+                    ->join('datos', 'usuarios.idDatos', '=', 'datos.idDatos');
+            }
+
+            // Apply role-based filter to details query
+            if ($user->idRol == 2) {
+                $detailsQuery->where('incidentes.idUsuario', $user->idUsuario);
+            } elseif ($user->idRol == 3) {
+                $detailsQuery->where('incidentes.idTecnico', $user->idUsuario);
+            }
+            // idRol = 1: No filter
+
+            $incidentsDetails = $detailsQuery->orderBy('incidentes.fecha_reporte', 'desc')->get();
+
+            return response()->json([
+                'totalIncidents' => $totalIncidents,
+                'incidentsByStatus' => $incidentsByStatus,
+                'incidentsDetails' => $incidentsDetails,
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error in getIncidentsData: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to fetch incidents dashboard data',
                 'message' => $e->getMessage(),
             ], 500);
         }
@@ -118,53 +258,4 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Get dashboard data for incidents.
-     */
-    public function getIncidentsData()
-    {
-        try {
-            // Get total number of incidents
-            $totalIncidents = Incidente::count();
-
-            // Get incidents grouped by status
-            $incidentsByStatus = Incidente::select(
-                DB::raw('CASE 
-                    WHEN estado = 0 THEN "Pendiente" 
-                    WHEN estado = 1 THEN "En progreso" 
-                    WHEN estado = 2 THEN "Resuelto" 
-                    END as status'),
-                DB::raw('count(*) as count')
-            )
-                ->groupBy('estado')
-                ->get();
-
-            // Get detailed incident information
-            $incidentsDetails = Incidente::select(
-                'incidentes.titulo',
-                'incidentes.descripcion',
-                'incidentes.fecha_reporte',
-                'incidentes.prioridad', // Raw numeric value (0, 1, 2)
-                'incidentes.estado', // Raw numeric value (0, 1, 2)
-                'areas.nombre as area',
-                DB::raw('CONCAT(activos.codigo_inventario, " - ", activos.marca_modelo, " (", activos.tipo, ")") as activo')
-            )
-                ->leftJoin('areas', 'incidentes.idArea', '=', 'areas.idArea')
-                ->join('activos', 'incidentes.idActivo', '=', 'activos.idActivo')
-                ->orderBy('incidentes.fecha_reporte', 'desc')
-                ->get();
-
-            return response()->json([
-                'totalIncidents' => $totalIncidents,
-                'incidentsByStatus' => $incidentsByStatus,
-                'incidentsDetails' => $incidentsDetails,
-            ], 200);
-        } catch (\Exception $e) {
-            Log::error('Error in getIncidentsData: ' . $e->getMessage());
-            return response()->json([
-                'error' => 'Failed to fetch incidents dashboard data',
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
 }

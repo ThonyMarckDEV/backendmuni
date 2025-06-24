@@ -92,14 +92,14 @@ class AuthController extends Controller
         $accessToken = \Firebase\JWT\JWT::encode($accessPayload, $secret, 'HS256');
         $refreshToken = \Firebase\JWT\JWT::encode($refreshPayload, $secret, 'HS256');
 
-        // Gestionar sesiones activas (máximo 3)
+        // Gestionar sesiones activas (máximo 1)
         $activeSessions = DB::table('refresh_tokens')
             ->where('idUsuario', $user->idUsuario)
             ->where('expires_at', '>', now())
             ->orderBy('created_at', 'asc')
             ->get();
 
-        if ($activeSessions->count() >= 3) {
+        if ($activeSessions->count() >= 1) {
             // Eliminar la sesión más antigua
             DB::table('refresh_tokens')
                 ->where('idToken', $activeSessions->first()->idToken)

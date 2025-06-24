@@ -5,21 +5,10 @@ use App\Http\Controllers\ActivoController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncidenteController;
-use App\Http\Controllers\AuthGoogleController;
-use App\Http\Controllers\CarritoController;
-use App\Http\Controllers\CategoriesController;
-use App\Http\Controllers\DetalleCarritoController;
-use App\Http\Controllers\DirectionController;
-use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RolController;
-use App\Http\Controllers\SessionsController;
-use App\Http\Controllers\SubCategoriesController;
 use App\Http\Controllers\UserController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\PedidosController;
 
 // Rutas públicas (no requieren autenticación)
 Route::post('/login', [AuthController::class, 'login']);
@@ -68,24 +57,10 @@ Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () {
     Route::get('/incidentes/tecnicos', [IncidenteController::class, 'getTechnicians'])->name('incidentes.tecnicos');
 
     //Rutas Dashboard
-    Route::get('/assets-by-area', [DashboardController::class, 'getActivosporArea']);
     Route::get('/users-by-area', [DashboardController::class, 'getUsersByArea']);
     Route::get('/areas-data', [DashboardController::class, 'getAreasData']);
-    Route::get('/incidents-data', [DashboardController::class, 'getIncidentsData']);
 });
 
-// RUTAS PARA X VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
-Route::middleware(['auth.jwt', 'checkRoleMW:usuario'])->group(function () { 
-
-
-
-});
-
-
-// RUTAS PARA ADMIN VALIDADA POR MIDDLEWARE AUTH (PARA TOKEN JWT) Y CHECKROLE (PARA VALIDAR ROL DEL TOKEN)
-Route::middleware(['auth.jwt', 'checkRoleMW:tecnico'])->group(function () { 
-    
-});
 
 // RUTAS PARA Todos los Roles
 Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () { 
@@ -100,11 +75,14 @@ Route::middleware(['auth.jwt', 'checkRolesMW'])->group(function () {
     Route::get('/incidentes/{id}/pdf', [IncidenteController::class, 'generatePdf']);
     Route::get('/userArea', [IncidenteController::class, 'getUserData']);
 
+    //Dashaoard routes
+    Route::get('/incidents-data', [DashboardController::class, 'getIncidentsData']);
+
 });
 
 // RUTAS PARA Rol Admin y Usuario
 Route::middleware(['auth.jwt', 'CheckRolesAdmin_Usuario'])->group(function () { 
 
-
+    Route::get('/assets-by-area', [DashboardController::class, 'getActivosporArea']);
 
 });
