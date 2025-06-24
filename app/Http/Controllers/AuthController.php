@@ -230,28 +230,25 @@ class AuthController extends Controller
                 ->first();
 
             if (!$refreshToken) {
-                // Eliminar el token si existe en la tabla (limpieza de tokens inválidos o expirados)
-                DB::table('refresh_tokens')
-                    ->where('idToken', $request->refresh_token_id)
-                    ->delete();
-
+                // No eliminar el token si no pertenece al usuario
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Token no válido o expirado'
-                ], 200);
+                    'message' => 'Token no válido o no autorizado'
+                ], 401); // Cambiado a 401 para indicar no autorizado
             }
 
             // Verificar si el token ha expirado
             if ($refreshToken->expires_at && now()->greaterThan($refreshToken->expires_at)) {
-                // Eliminar el token expirado
+                // Eliminar el token solo si pertenece al usuario
                 DB::table('refresh_tokens')
                     ->where('idToken', $request->refresh_token_id)
+                    ->where('idUsuario', $request->userID)
                     ->delete();
 
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Token no válido o expirado'
-                ], 200);
+                    'message' => 'Token expirado'
+                ], 401); // Cambiado a 401 para indicar no autorizado
             }
 
             return response()->json([
