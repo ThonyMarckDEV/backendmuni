@@ -3,60 +3,57 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDatosRequest;
-use App\Http\Requests\UpdateDatosRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Datos;
-use App\Models\Rol;
-use App\Models\Area;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
+use App\Utilities\PaginationTrait;
+
 
 class UserController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    use PaginationTrait;
+       public function index(Request $request): JsonResponse
     {
         try {
             $query = User::with(['rol', 'datos']);
 
-            if ($request->has('estado')) {
-                $query->where('estado', $request->estado);
-            }
+            // Definir campos de búsqueda
+            $searchFields = [
+                'datos.nombre',
+                'datos.apellido', 
+                'datos.email',
+                'datos.dni'
+            ];
 
-            if ($request->has('rol')) {
-                $query->where('idRol', $request->rol);
-            }
+            // Definir campos de filtro
+            $filterFields = [
+                'estado' => 'estado',
+                'rol' => 'idRol',
+                'area' => 'datos.idArea'
+            ];
 
-            if ($request->has('search')) {
-                $search = $request->search;
-                $query->whereHas('datos', function ($q) use ($search) {
-                    $q->where('nombre', 'LIKE', "%{$search}%")
-                      ->orWhere('apellido', 'LIKE', "%{$search}%")
-                      ->orWhere('email', 'LIKE', "%{$search}%");
-                });
-            }
+            // Aplicar paginación con filtros y búsqueda
+            $usuarios = $this->applyPagination(
+                $query,
+                $request,
+                $searchFields,
+                $filterFields,
+                8
+            );
 
-            $perPage = $request->get('per_page', 15);
-            $usuarios = $query->paginate($perPage);
+            return $this->paginatedResponse($usuarios, 'Usuarios obtenidos exitosamente');
 
-            return response()->json([
-                'success' => true,
-                'data' => $usuarios,
-                'message' => 'Usuarios obtenidos exitosamente'
-            ]);
         } catch (\Exception $e) {
             Log::error('Error al obtener usuarios: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener los usuarios',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse('Error al obtener los usuarios', $e);
         }
     }
 

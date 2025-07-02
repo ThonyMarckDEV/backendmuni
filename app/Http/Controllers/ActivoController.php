@@ -8,18 +8,29 @@ use App\Http\Requests\UpdateActivoRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Utilities\PaginationTrait;
+use Illuminate\Http\Request;
 
 class ActivoController extends Controller
 {
-    public function index(): JsonResponse
+
+    use PaginationTrait;
+    
+    public function index(Request $request): JsonResponse
     {
         try {
-            $activos = Activo::all();
-            return response()->json([
-                'success' => true,
-                'data' => $activos,
-                'message' => 'Activos obtenidos exitosamente',
-            ]);
+            $query = Activo::query();
+
+            // Aplicar paginación sin filtros ni búsqueda
+            $activos = $this->applyPagination(
+                $query,
+                $request,
+                [], // No search fields
+                [], // No filter fields
+                8   // Default items per page
+            );
+
+            return $this->paginatedResponse($activos, 'Activos obtenidos exitosamente');
         } catch (\Exception $e) {
             Log::error('Error al obtener activos: ' . $e->getMessage());
             return response()->json([
