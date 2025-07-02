@@ -40,6 +40,24 @@ class ActivoController extends Controller
         }
     }
 
+    public function index2(): JsonResponse
+    {
+        try {
+            $activos = Activo::all();
+            return response()->json([
+                'success' => true,
+                'data' => $activos,
+                'message' => 'Activos obtenidos exitosamente',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener activos: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los activos',
+            ], 500);
+        }
+    }
+
     public function store(StoreActivoRequest $request): JsonResponse
     {
         return DB::transaction(function () use ($request) {

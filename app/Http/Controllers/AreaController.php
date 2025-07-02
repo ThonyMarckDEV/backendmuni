@@ -38,6 +38,13 @@ class AreaController extends Controller
         }
     }
 
+    public function index2()
+    {
+        $areas = Area::all();
+        return response()->json(['success' => true, 'data' => $areas], 200);
+    }
+
+
     public function show($id)
     {
         $area = Area::find($id);

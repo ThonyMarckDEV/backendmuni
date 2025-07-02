@@ -35,12 +35,14 @@ Route::middleware(['auth.jwt', 'checkRoleMW:admin'])->group(function () {
 
     // Activo routes
     Route::get('/activos', [ActivoController::class, 'index']);
+    Route::get('/activoslistar', [ActivoController::class, 'index2']);
     Route::post('/activos', [ActivoController::class, 'store']);
     Route::put('/activos/{id}', [ActivoController::class, 'update']);
     Route::get('/activos/{id}', [ActivoController::class, 'show']);
 
     //Areas routes
     Route::get('/areas', [AreaController::class, 'index']);
+    Route::get('/areaslistar', [AreaController::class, 'index2']);
     Route::get('/areas/{id}', [AreaController::class, 'show']);
     Route::post('/areas', [AreaController::class, 'store']);
     Route::put('/areas/{id}', [AreaController::class, 'update']);
