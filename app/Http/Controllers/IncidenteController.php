@@ -7,6 +7,7 @@ use App\Models\Activo;
 use App\Http\Requests\StoreIncidenteRequest;
 use App\Http\Requests\UpdateIncidenteRequest;
 use App\Models\User;
+use App\Services\MailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,14 @@ use Illuminate\Http\Request;
 
 class IncidenteController extends Controller
 {
+
+    protected $mailService;
+
+    public function __construct(MailService $mailService)
+    {
+    $this->mailService = $mailService;
+    }
+
   public function index(Request $request): JsonResponse
     {
         try {
@@ -102,7 +111,7 @@ class IncidenteController extends Controller
         }
     }
 
-    public function store(StoreIncidenteRequest $request): JsonResponse
+     public function store(StoreIncidenteRequest $request): JsonResponse
     {
         return DB::transaction(function () use ($request) {
             try {
@@ -126,35 +135,48 @@ class IncidenteController extends Controller
                 $incidente = Incidente::create($validated);
                 $incidente->load(['activo', 'area', 'tecnico.datos']);
 
+                $incidenteData = [
+                    'idIncidente' => $incidente->idIncidente,
+                    'activo' => $incidente->activo ? [
+                        'idActivo' => $incidente->activo->idActivo,
+                        'codigo_inventario' => $incidente->activo->codigo_inventario,
+                        'tipo' => $incidente->activo->tipo,
+                        'marca_modelo' => $incidente->activo->marca_modelo,
+                        'ubicacion' => $incidente->activo->ubicacion,
+                    ] : null,
+                    'area' => $incidente->area ? [
+                        'idArea' => $incidente->area->idArea,
+                        'nombre' => $incidente->area->nombre,
+                    ] : null,
+                    'tecnico' => $incidente->tecnico && $incidente->tecnico->datos ? [
+                        'idUsuario' => $incidente->tecnico->idUsuario,
+                        'nombre' => $incidente->tecnico->datos->nombre,
+                        'apellido' => $incidente->tecnico->datos->apellido,
+                    ] : null,
+                    'prioridad' => $incidente->prioridad,
+                    'titulo' => $incidente->titulo,
+                    'descripcion' => $incidente->descripcion,
+                    'fecha_reporte' => $incidente->fecha_reporte,
+                    'estado' => $incidente->estado,
+                    'comentarios_tecnico' => $incidente->comentarios_tecnico,
+                    'created_at' => $incidente->created_at,
+                    'updated_at' => $incidente->updated_at,
+                ];
+
+                $emailSent = $this->mailService->sendToAdmins(
+                    'emails.incident_notification',
+                    ['incidente' => $incidenteData],
+                    'Nuevo Incidente Reportado: ' . $incidente->titulo
+                );
+
+                if (!$emailSent) {
+                    Log::warning('Email sending to admins failed, but incident was created', ['idIncidente' => $incidente->idIncidente]);
+                }
+
                 return response()->json([
                     'success' => true,
-                    'data' => [
-                        'idIncidente' => $incidente->idIncidente,
-                        'activo' => $incidente->activo ? [
-                            'idActivo' => $incidente->activo->idActivo,
-                            'codigo_inventario' => $incidente->activo->codigo_inventario,
-                            'tipo' => $incidente->activo->tipo,
-                            'marca_modelo' => $incidente->activo->marca_modelo,
-                            'ubicacion' => $incidente->activo->ubicacion,
-                        ] : null,
-                        'area' => $incidente->area ? [
-                            'idArea' => $incidente->area->idArea,
-                            'nombre' => $incidente->area->nombre,
-                        ] : null,
-                        'tecnico' => $incidente->tecnico && $incidente->tecnico->datos ? [
-                            'idUsuario' => $incidente->tecnico->idUsuario,
-                            'nombre' => $incidente->tecnico->datos->nombre,
-                            'apellido' => $incidente->tecnico->datos->apellido,
-                        ] : null,
-                        'prioridad' => $incidente->prioridad,
-                        'titulo' => $incidente->titulo,
-                        'descripcion' => $incidente->descripcion,
-                        'fecha_reporte' => $incidente->fecha_reporte,
-                        'estado' => $incidente->estado,
-                        'comentarios_tecnico' => $incidente->comentarios_tecnico,
-                        'created_at' => $incidente->created_at,
-                        'updated_at' => $incidente->updated_at,
-                    ],
+                    'data' => $incidenteData,
+                    'emailSent' => $emailSent,
                     'message' => 'Incidente registrado exitosamente',
                 ], 201);
             } catch (\Exception $e) {
@@ -166,6 +188,132 @@ class IncidenteController extends Controller
             }
         });
     }
+
+    // public function update(UpdateIncidenteRequest $request, $id): JsonResponse
+    // {
+    //     return DB::transaction(function () use ($request, $id) {
+    //         try {
+    //             $incidente = Incidente::findOrFail($id);
+    //             $user = Auth::user();
+    //             if (!$user) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Usuario no autenticado',
+    //                 ], 401);
+    //             }
+
+    //             $isTechnician = $user->idRol === 3;
+    //             $isAdmin = $user->idRol === 1;
+    //             $isUser = $user->idRol === 2;
+
+    //             // Permission checks
+    //             if ($isTechnician && $incidente->idTecnico !== $user->idUsuario) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'No tienes permiso para actualizar este incidente.',
+    //                 ], 403);
+    //             }
+    //             if ($isUser && $incidente->idUsuario !== $user->idUsuario) {
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'No tienes permiso para actualizar este incidente.',
+    //                 ], 403);
+    //             }
+
+    //             $validated = $request->validated();
+    //             $data = [];
+
+    //             if ($isTechnician) {
+    //                 $data['estado'] = 2;
+    //                 if (isset($validated['comentarios_tecnico'])) {
+    //                     $data['comentarios_tecnico'] = $validated['comentarios_tecnico'];
+    //                 }
+    //             } elseif ($isAdmin) {
+    //                 $data['idActivo'] = $validated['idActivo'];
+    //                 if (array_key_exists('idTecnico', $validated)) {
+    //                     $data['idTecnico'] = $validated['idTecnico'];
+    //                 }
+    //                 if (array_key_exists('estado', $validated)) {
+    //                     $data['estado'] = $validated['estado'];
+    //                 }
+    //             } else {
+    //                 $data = [
+    //                     'idActivo' => $validated['idActivo'],
+    //                     'titulo' => $validated['titulo'],
+    //                     'descripcion' => $validated['descripcion'],
+    //                     'fecha_reporte' => $validated['fecha_reporte'],
+    //                     'prioridad' => $validated['prioridad'],
+    //                 ];
+    //             }
+
+    //             $previousIdTecnico = $incidente->idTecnico;
+    //             $incidente->update($data);
+    //             $incidente->load(['activo', 'area', 'tecnico.datos']);
+
+    //             $incidenteData = [
+    //                 'idIncidente' => $incidente->idIncidente,
+    //                 'activo' => $incidente->activo ? [
+    //                     'idActivo' => $incidente->activo->idActivo,
+    //                     'codigo_inventario' => $incidente->activo->codigo_inventario,
+    //                     'tipo' => $incidente->activo->tipo,
+    //                     'marca_modelo' => $incidente->activo->marca_modelo,
+    //                     'ubicacion' => $incidente->activo->ubicacion,
+    //                 ] : null,
+    //                 'area' => $incidente->area ? [
+    //                     'idArea' => $incidente->area->idArea,
+    //                     'nombre' => $incidente->area->nombre,
+    //                 ] : null,
+    //                 'tecnico' => $incidente->tecnico && $incidente->tecnico->datos ? [
+    //                     'idUsuario' => $incidente->tecnico->idUsuario,
+    //                     'nombre' => $incidente->tecnico->datos->nombre,
+    //                     'apellido' => $incidente->tecnico->datos->apellido,
+    //                 ] : null,
+    //                 'prioridad' => $incidente->prioridad,
+    //                 'titulo' => $incidente->titulo,
+    //                 'descripcion' => $incidente->descripcion,
+    //                 'fecha_reporte' => $incidente->fecha_reporte,
+    //                 'estado' => $incidente->estado,
+    //                 'comentarios_tecnico' => $incidente->comentarios_tecnico,
+    //                 'created_at' => $incidente->created_at,
+    //                 'updated_at' => $incidente->updated_at,
+    //             ];
+
+    //             // Enviar correo al técnico si se asignó uno nuevo
+    //             $emailSent = true;
+    //             if ($isAdmin && array_key_exists('idTecnico', $validated) && $validated['idTecnico'] !== $previousIdTecnico) {
+    //                 $emailSent = $this->mailService->sendToTechnician(
+    //                     'emails.technician_assigned',
+    //                     ['incidente' => $incidenteData],
+    //                     $validated['idTecnico'],
+    //                     'Asignación de Incidente: ' . $incidente->titulo
+    //                 );
+
+    //                 if (!$emailSent) {
+    //                     Log::warning('No se pudo enviar el correo al técnico, pero el incidente fue actualizado', ['idIncidente' => $incidente->idIncidente, 'idTecnico' => $validated['idTecnico']]);
+    //                 }
+    //             }
+
+    //             return response()->json([
+    //                 'success' => true,
+    //                 'data' => $incidenteData,
+    //                 'emailSent' => $emailSent,
+    //                 'message' => 'Incidente actualizado exitosamente',
+    //             ]);
+    //         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Incidente no encontrado',
+    //             ], 404);
+    //         } catch (\Exception $e) {
+    //             Log::error('Error al actualizar incidente: ' . $e->getMessage(), ['id' => $id]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Error al actualizar el incidente: ' . $e->getMessage(),
+    //             ], 500);
+    //         }
+    //     });
+    // }
+
 
     public function update(UpdateIncidenteRequest $request, $id): JsonResponse
     {
@@ -224,38 +372,85 @@ class IncidenteController extends Controller
                     ];
                 }
 
+                $previousIdTecnico = $incidente->idTecnico;
+                $previousEstado = $incidente->estado;
                 $incidente->update($data);
-                $incidente->load(['activo', 'area', 'tecnico.datos']);
+                $incidente->load(['activo', 'area', 'tecnico.datos', 'usuario.datos']);
+
+                $incidenteData = [
+                    'idIncidente' => $incidente->idIncidente,
+                    'activo' => $incidente->activo ? [
+                        'idActivo' => $incidente->activo->idActivo,
+                        'codigo_inventario' => $incidente->activo->codigo_inventario,
+                        'tipo' => $incidente->activo->tipo,
+                        'marca_modelo' => $incidente->activo->marca_modelo,
+                        'ubicacion' => $incidente->activo->ubicacion,
+                    ] : null,
+                    'area' => $incidente->area ? [
+                        'idArea' => $incidente->area->idArea,
+                        'nombre' => $incidente->area->nombre,
+                    ] : null,
+                    'tecnico' => $incidente->tecnico && $incidente->tecnico->datos ? [
+                        'idUsuario' => $incidente->tecnico->idUsuario,
+                        'nombre' => $incidente->tecnico->datos->nombre,
+                        'apellido' => $incidente->tecnico->datos->apellido,
+                    ] : null,
+                    'usuario' => $incidente->usuario && $incidente->usuario->datos ? [
+                        'idUsuario' => $incidente->usuario->idUsuario,
+                        'nombre' => $incidente->usuario->datos->nombre,
+                        'apellido' => $incidente->usuario->datos->apellido,
+                        'email' => $incidente->usuario->datos->email,
+                    ] : null,
+                    'prioridad' => $incidente->prioridad,
+                    'titulo' => $incidente->titulo,
+                    'descripcion' => $incidente->descripcion,
+                    'fecha_reporte' => $incidente->fecha_reporte,
+                    'estado' => $incidente->estado,
+                    'comentarios_tecnico' => $incidente->comentarios_tecnico,
+                    'created_at' => $incidente->created_at,
+                    'updated_at' => $incidente->updated_at,
+                ];
+
+                $emailSent = true;
+                // Enviar correo al técnico si se asignó uno nuevo
+                if ($isAdmin && array_key_exists('idTecnico', $validated) && $validated['idTecnico'] !== $previousIdTecnico) {
+                    $emailSent = $this->mailService->sendToTechnician(
+                        'emails.technician_assigned',
+                        ['incidente' => $incidenteData],
+                        $validated['idTecnico'],
+                        'Asignación de Incidente: ' . $incidente->titulo
+                    );
+
+                    if (!$emailSent) {
+                        Log::warning('No se pudo enviar el correo al técnico, pero el incidente fue actualizado', [
+                            'idIncidente' => $incidente->idIncidente,
+                            'idTecnico' => $validated['idTecnico']
+                        ]);
+                    }
+                }
+
+                // Enviar correo al usuario que reportó el incidente si el estado cambia a resuelto (estado = 2)
+                if ($isTechnician && array_key_exists('estado', $validated) && $validated['estado'] == 2 && $previousEstado != 2) {
+                    $emailSent = $this->mailService->sendToIncidentReporter(
+                        'emails.incident_resolved',
+                        ['incidente' => $incidenteData],
+                        $incidente->idUsuario, // Pass idUsuario instead of email
+                        'Incidente Resuelto: ' . $incidente->titulo
+                    );
+
+                    if (!$emailSent) {
+                        Log::warning('No se pudo enviar el correo al usuario que reportó el incidente', [
+                            'idIncidente' => $incidente->idIncidente,
+                            'idUsuario' => $incidente->idUsuario,
+                            'email' => $incidente->usuario->datos->email ?? 'No disponible'
+                        ]);
+                    }
+                }
 
                 return response()->json([
                     'success' => true,
-                    'data' => [
-                        'idIncidente' => $incidente->idIncidente,
-                        'activo' => $incidente->activo ? [
-                            'idActivo' => $incidente->activo->idActivo,
-                            'codigo_inventario' => $incidente->activo->codigo_inventario,
-                            'tipo' => $incidente->activo->tipo,
-                            'marca_modelo' => $incidente->activo->marca_modelo,
-                            'ubicacion' => $incidente->activo->ubicacion,
-                        ] : null,
-                        'area' => $incidente->area ? [
-                            'idArea' => $incidente->area->idArea,
-                            'nombre' => $incidente->area->nombre,
-                        ] : null,
-                        'tecnico' => $incidente->tecnico && $incidente->tecnico->datos ? [
-                            'idUsuario' => $incidente->tecnico->idUsuario,
-                            'nombre' => $incidente->tecnico->datos->nombre,
-                            'apellido' => $incidente->tecnico->datos->apellido,
-                        ] : null,
-                        'prioridad' => $incidente->prioridad,
-                        'titulo' => $incidente->titulo,
-                        'descripcion' => $incidente->descripcion,
-                        'fecha_reporte' => $incidente->fecha_reporte,
-                        'estado' => $incidente->estado,
-                        'comentarios_tecnico' => $incidente->comentarios_tecnico,
-                        'created_at' => $incidente->created_at,
-                        'updated_at' => $incidente->updated_at,
-                    ],
+                    'data' => $incidenteData,
+                    'emailSent' => $emailSent,
                     'message' => 'Incidente actualizado exitosamente',
                 ]);
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

@@ -8,6 +8,8 @@ use App\Models\Area;
 use App\Models\Datos;
 use App\Models\Incidente;
 use App\Models\User;
+use App\Utilities\PaginationTrait;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
+    use PaginationTrait;
       /**
      * Get dashboard data for assets based on user role.
      * idRol = 1: All active assets across all areas.
@@ -182,18 +185,15 @@ class DashboardController extends Controller
         }
     }
 
-    /**
-     * Get dashboard data for users with client role (idRol = 2).
-     */
-    public function getUsersByArea()
+    public function getUsersByArea(Request $request): JsonResponse
     {
         try {
-            // Get total number of active client users
+            // Get total number of active client users (unfiltered for charts)
             $totalUsers = User::where('estado', 1)
                 ->where('idRol', 2)
                 ->count();
 
-            // Get client users grouped by area
+            // Get client users grouped by area (unfiltered for charts)
             $usersByArea = Datos::select('areas.nombre as area', DB::raw('count(datos.idDatos) as count'))
                 ->leftJoin('areas', 'datos.idArea', '=', 'areas.idArea')
                 ->join('usuarios', 'datos.idDatos', '=', 'usuarios.idDatos')
@@ -202,8 +202,8 @@ class DashboardController extends Controller
                 ->groupBy('areas.idArea', 'areas.nombre')
                 ->get();
 
-            // Get detailed client user information by area
-            $usersDetails = Datos::select(
+            // Get detailed client user information by area with filters and pagination
+            $query = Datos::select(
                 'areas.nombre as area',
                 'datos.nombre',
                 'datos.apellido',
@@ -213,10 +213,32 @@ class DashboardController extends Controller
                 ->join('usuarios', 'datos.idDatos', '=', 'usuarios.idDatos')
                 ->join('roles', 'usuarios.idRol', '=', 'roles.idRol')
                 ->where('usuarios.estado', 1)
-                ->where('usuarios.idRol', 2)
-                ->orderBy('areas.nombre')
-                ->orderBy('datos.nombre')
-                ->get();
+                ->where('usuarios.idRol', 2);
+
+            // Apply filters
+            if ($request->has('area') && $request->area !== 'all') {
+                if ($request->area === 'null') {
+                    $query->whereNull('areas.nombre');
+                } else {
+                    $query->where('areas.nombre', $request->area);
+                }
+            }
+
+            if ($request->has('name') && !empty($request->name)) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('datos.nombre', 'LIKE', '%' . $request->name . '%')
+                      ->orWhere('datos.apellido', 'LIKE', '%' . $request->name . '%');
+                });
+            }
+
+            // Apply pagination
+            $usersDetails = $this->applyPagination(
+                $query,
+                $request,
+                [], // No additional search fields
+                [], // No additional filter fields
+                $request->input('per_page', 10) // Default items per page
+            );
 
             return response()->json([
                 'totalUsers' => $totalUsers,
@@ -231,6 +253,8 @@ class DashboardController extends Controller
             ], 500);
         }
     }
+
+
     /**
      * Get dashboard data for areas.
      */
