@@ -21,7 +21,7 @@ class UpdateActivoRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('activos', 'codigo_inventario')->ignore($activoId),
+                Rule::unique('activos', 'codigo_inventario')->ignore($activoId, 'idActivo'),
             ],
             'ubicacion' => 'required|string|max:255',
             'tipo' => 'required|string|max:255',

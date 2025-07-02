@@ -5,13 +5,37 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Utilities\PaginationTrait;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class AreaController extends Controller
 {
-    public function index()
+
+    use PaginationTrait;
+    
+    public function index(Request $request): JsonResponse
     {
-        $areas = Area::all();
-        return response()->json(['success' => true, 'data' => $areas], 200);
+        try {
+            $query = Area::query();
+
+            // Aplicar paginación sin filtros ni búsqueda
+            $areas = $this->applyPagination(
+                $query,
+                $request,
+                [],
+                [],
+                8
+            );
+
+            return $this->paginatedResponse($areas, 'Areas obtenidos exitosamente');
+        } catch (\Exception $e) {
+            Log::error('Error al obtener areas: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los areas',
+            ], 500);
+        }
     }
 
     public function show($id)
